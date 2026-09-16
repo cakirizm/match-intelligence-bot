@@ -1,4 +1,5 @@
 import './globals.css';
+import './detail.css';
 
 export const metadata = {
   title: 'Match Intelligence Bot',
