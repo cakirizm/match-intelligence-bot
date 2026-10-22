@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="tr">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#08131f"><meta name="description" content="Beş büyük futbol ligi için açık veriye dayalı maç simülasyonu, kadro ve haber analizi.">
+<title>SIMULAB PRO | Maç Analiz Merkezi</title><link rel="stylesheet" href="./studio.css"></head>
+<body>
+<div class="app">
+<header class="topbar">
+ <a href="./" class="logo" aria-label="SIMULAB ana sayfa"><span class="logo-icon">S<span class="logo-dot">●</span></span><span>SIMU<b>LAB</b><small>FOOTBALL INTELLIGENCE</small></span></a>
+ <div class="top-actions"><span class="tag"><span class="live-dot"></span> V2 · AÇIK VERİ</span><button class="btn primary" id="open-sync">↻ Verileri Güncelle</button></div>
+</header>
+<section class="hero">
+ <div><span class="eyebrow">MATCH INTELLIGENCE PLATFORM / V2</span><h1>Maç başlamadan <em>bin ihtimali</em> gör.</h1><p>Beş büyük lig. Fikstür, takım formu, haber sinyalleri, manuel ilk 11 ve 1.000 koşuluk simülasyon bir arada.</p></div>
+ <div class="hero-score"><strong id="total-games">—</strong><span>KAYITLI TAMAMLANMIŞ MAÇ</span><small id="status-top">Kaynaklar kontrol bekliyor</small></div>
+</section>
+<section class="leaguebar" id="leagues" aria-label="Lig seçimi"></section>
+<div class="banner" id="source-banner" role="status">Verileriniz tarayıcıda okunuyor...</div>
+<nav class="tabs" id="tabs">
+ <button data-tab="match" class="selected">◈ Maç Merkezi</button>
+ <button data-tab="lineup">♙ İlk 11 & Oyuncular</button>
+ <button data-tab="news">◉ Haber & Psikoloji</button>
+ <button data-tab="method">▤ Veri & Model</button>
+</nav>
+<section class="tabpage selected" id="page-match">
+ <div class="match-grid">
+ <div class="column">
+ <article class="panel"><div class="panel-head"><div><small class="eyebrow">01 / KARŞILAŞMALAR</small><h2>Fikstür & sonuçlar</h2></div><span class="chip" id="season-label">2026–27</span></div>
+ <div class="segmented" id="fixture-filters"><button class="active" data-fixture="upcoming">Yaklaşan maçlar</button><button data-fixture="results">Son sonuçlar</button><button data-fixture="all">Tüm maçlar</button></div>
+ <div class="fixture-search"><input type="search" id="fixture-search" placeholder="Takım veya maç ara..." aria-label="Fikstürde ara"><select id="fixture-limit" aria-label="Gösterilecek maç sayısı"><option value="12">12 maç</option><option value="30">30 maç</option><option value="100">100 maç</option></select></div>
+ <div id="fixture-list" class="fixture-list"></div><p class="footnote" id="fixture-footnote"></p>
+ </article>
+ <article class="panel"><div class="panel-head"><div><small class="eyebrow">02 / FORM</small><h2>Takım karşılaştırması</h2></div><span class="chip">SON 5 MAÇ</span></div><div id="form-comparison"></div></article>
+ </div>
+ <div class="column">
+ <article class="panel sim-panel"><div class="panel-head"><div><small class="eyebrow">03 / MONTE CARLO</small><h2>Simülasyon Stüdyosu</h2></div><div class="speeds" id="speeds"><button data-speed="1">1×</button><button data-speed="10">10×</button><button data-speed="100" class="active">100×</button></div></div>
+ <div class="selection"><label>EV SAHİBİ<select id="team-home"></select></label><span class="vs">VS</span><label>DEPLASMAN<select id="team-away"></select></label></div>
+ <div class="fixture-date" id="selected-match"><span>Maç seçilmedi</span><button id="open-lineups">İlk 11 düzenle ↗</button></div>
+ <div class="arena"><div class="field-lines"><div class="center-circle"></div><div class="goal left-goal"></div><div class="goal right-goal"></div><span class="ball" id="ball"></span><span class="field-text">TEMSiLİ SAHA ANİMASYONU • GERÇEK OLAY VERİSİ DEĞİL</span></div><div class="arena-overlay"><small id="sim-n">0 / 1.000 SİMÜLASYON</small><strong id="sim-score">— : —</strong><span id="sim-status">Başlamak için iki takım seç</span></div></div>
+ <div class="sim-controls"><button class="btn primary big" id="simulate">▶ 1.000 MAÇI SİMÜLE ET</button><button class="btn outline" id="reset-factors" title="Manuel faktörleri sıfırla">↺ Faktörler</button></div>
+ <div class="progress-track"><div id="sim-progress"></div></div>
+ <div class="outcome"><div class="outcome-track"><span id="bar-home"></span><span id="bar-draw"></span><span id="bar-away"></span></div><div class="outcome-grid"><div><strong id="win-home">—</strong><small>Ev sahibi kazanır</small></div><div><strong id="win-draw">—</strong><small>Beraberlik</small></div><div><strong id="win-away">—</strong><small>Deplasman kazanır</small></div></div></div>
+ <div class="analytics"><div class="mini"><h3>En sık skorlar</h3><div id="score-modes" class="placeholder">Simülasyon bekleniyor</div></div><div class="mini"><h3>Maç senaryoları</h3><div id="scenarios" class="placeholder">Simülasyon bekleniyor</div></div></div>
+ <div class="impact" id="impact-box">Haber, ilk 11 ve psikolojik göstergelerin etkisi simülasyonda burada gösterilecek.</div>
+ </article>
+ </div></div>
+</section>
+<section class="tabpage" id="page-lineup"><div class="section-intro"><small class="eyebrow">KADRO MODELLEME</small><h2>İlk 11'i maçtan önce oluştur.</h2><p>Oyuncu isimlerini, 1–10 arası kendi performans değerlendirmeni ve fiziksel hazır oluş yüzdesini gir. Gerçek oyuncu puanı otomatik uydurulmaz. Değişiklikler sonraki simülasyona dahil edilir.</p></div><div class="lineups"><div class="panel" id="lineup-home"></div><div class="panel" id="lineup-away"></div></div><div class="notice">İlk 11 isimlerini girmek tek başına olasılığı değiştirmez. <strong>Puan ve hazır oluş yüzdesi</strong> değerleri, öznel senaryo varsayımları olarak modeli sınırlı ölçüde etkiler. Bu bilgiler resmi kadro onayı olarak sunulmaz.</div></section>
+<section class="tabpage" id="page-news">
+ <div class="section-intro"><small class="eyebrow">HABER & BAĞLAM</small><h2>Maçın saha dışındaki hikâyesi.</h2><p>Takımlara ilişkin açık haber başlıklarını oku, olası etkileri değerlendir ve sadece onayladığın haberleri senaryoya ekle. Başlıklardan gerçek psikolojik durum veya kesin sakatlık teşhisi yapılmaz.</p></div>
+ <div class="news-actions"><button class="btn primary" id="fetch-news">↻ İki takımın haberlerini getir</button><span id="news-status" class="hint">Güncel haber çekilmedi.</span></div>
+ <div class="news-cols"><article class="panel"><div class="panel-head"><h2 id="news-home-title">Ev sahibi haberleri</h2><span class="chip">KAYNAKLI</span></div><div id="news-home-list" class="news-list"><p class="placeholder">Takım seçip haberleri getir.</p></div></article><article class="panel"><div class="panel-head"><h2 id="news-away-title">Deplasman haberleri</h2><span class="chip">KAYNAKLI</span></div><div id="news-away-list" class="news-list"><p class="placeholder">Takım seçip haberleri getir.</p></div></article></div>
+ <article class="panel psych"><div class="panel-head"><div><small class="eyebrow">04 / TAKIM BAĞLAMI</small><h2>Psikoloji & motivasyon senaryosu</h2></div><span class="chip">TAHMİNSEL GÖSTERGE</span></div><div id="psych-insights" class="insights"></div><div class="sliders" id="psych-controls"></div><p class="footnote">Son maç sonuçlarından hesaplanan form/momentum göstergesi, oyuncuların gerçek ruh hâlinin ölçümü değildir. Elle girilen baskı, moral ve yorgunluk senaryo varsayımıdır; etkiler aşırı tahminden kaçınmak için sınırlandırılmıştır.</p></article>
+</section>
+<section class="tabpage" id="page-method"><div class="section-intro"><small class="eyebrow">ŞEFFAFLIK</small><h2>Hangi bilgiden ne sonuç üretiyoruz?</h2><p>Modelin dayandığı veriler, varsayımlar ve sınırları burada açıkça gösterilir.</p></div><div class="method-grid">
+ <article class="panel"><h2>Gerçek maç verileri</h2><p id="data-summary">Kontrol bekleniyor</p><div class="notice">Ücretsiz temel kaynak <a href="https://github.com/openfootball/football.json" target="_blank" rel="noopener noreferrer">OpenFootball / CC0</a>. Kaynak dosyaları güncel değilse verinin tarihi ve gecikme görünür.</div></article>
+ <article class="panel"><h2>Ücretsiz güncel skor bağlantısı</h2><p>football-data.org ücretsiz anahtarı sunucu tarafında <code>FOOTBALL_DATA_API_KEY</code> adıyla eklenirse beş ligin mevcut sezon fikstür ve sonuçlarını güncelleyebiliriz. Ücretli plan gerekmez; ücretsiz katmanda gecikmeli skor ve limitler vardır. İsim eşleştirmeleri kontrol edilmelidir.</p><button class="btn outline" id="api-status-check">API bağlantısını kontrol et</button><p id="api-status-text" class="hint"></p></article>
+ <article class="panel"><h2>Hesaplama mantığı</h2><p>Takımların gerçekleşmiş maçlarından hücum/savunma gol ortalaması, iç/dış saha ve zaman ağırlığı çıkarılır. Bağlam faktörleri beklenen golü sınırlı ölçüde değiştirir. 1.000 Poisson/Monte Carlo karşılaşması üretilir.</p><p>1X2 sonuçları simülasyon dağılımıdır, doğrulanmış bahis olasılığı değildir.</p></article>
+ <article class="panel"><h2>Ücretsiz haber akışı</h2><p>Google News RSS üzerinden yalnızca başlık, yayın zamanı ve haber bağlantısı alınır. Başlıkların anahtar kelime etiketleri <strong>olası risk sinyalidir</strong>; gerçek haber içeriğinin incelendiği veya iddianın doğrulandığı anlamına gelmez.</p><p>Haberin simülasyona katılması için kullanıcı onayı gerekir.</p></article>
+ </div></section>
+<footer class="footer"><span>SIMULAB V2 • FREE DATA / EXPLICIT ASSUMPTIONS / 1.000 SIMULATIONS</span><span>Kesin maç tahmini veya bahis tavsiyesi değildir.</span></footer>
+</div>
+<div class="modal-back" id="sync-modal" aria-hidden="true"><div class="modal" role="dialog" aria-modal="true" aria-label="Veri güncelleme"><div class="modal-head"><div><small class="eyebrow">VERİ KAYNAKLARI</small><h2>Verileri Güncelle</h2></div><button id="close-sync" class="btn ghost" aria-label="Kapat">✕</button></div><p>Beş büyük Avrupa ligi için sezon geçmişini ve fikstürleri ücretsiz OpenFootball kaynağından alıyoruz. Türkiye Ligi bu sürümde yer almıyor.</p><div class="modal-actions"><button id="sync-current" class="btn outline">Seçili ligi güncelle</button><button id="sync-all" class="btn primary">Beş ligi güncelle</button></div><div class="notice" id="sync-message">Henüz indirme başlatılmadı.</div><div class="divider"></div><h3>Güncel kaynak (isteğe bağlı, ücretsiz)</h3><p>Vercel'e ücretsiz football-data.org anahtarı girildiyse aşağıdaki butonla en yeni fikstür ve gecikmeli sonuçları çekebiliriz.</p><button class="btn outline" id="sync-live">↻ Ücretsiz API'den son sonuçları getir</button><div class="divider"></div><h3>Kendi CSV dosyan</h3><p>Kolonlar: Date, HomeTeam, AwayTeam, FTHG, FTAG. Sadece seçili lige aktarılır.</p><input type="file" id="csv-file" accept=".csv,text/csv"><button class="btn outline" id="import-csv">CSV içe aktar</button></div></div>
+<script src="./studio.js" defer></script>
+</body></html>
