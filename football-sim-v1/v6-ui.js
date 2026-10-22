@@ -140,14 +140,41 @@ function runBacktest(){
  if(!league||!engine)return;
  runningBacktest=true;
  const button=$("v6-backtest");button.disabled=true;button.textContent="Hesaplanıyor...";
- $("v6-backtest-result").replaceChildren(node("p","placeholder","Tarih sıralı maçlar üzerinden eğitim ve test çalışıyor..."));
- setTimeout(()=>{
+ const box=$("v6-backtest-result");
+ box.replaceChildren(node("p","placeholder","Tarih sıralı maçlarla model testi başlıyor..."));
+ const request={leagueMatches:API().getLeagueMatches(league),allMatches:API().getAllHistoricalMatches(),
+  xgRows:xg.filter(x=>x.league===league),maxGames:Number($("v6-test-samples").value)||130};
+ const close=()=>{runningBacktest=false;button.disabled=false;button.textContent="Geçmiş maçlarla test et"};
+ const done=data=>{backtestResult={league,result:data};renderBacktest(data,league);close()};
+ const failure=e=>{
+  box.replaceChildren(node("p","placeholder","Test tamamlanamadı: "+String(e?.message||e)));
+  close();
+ };
+ let worker=null;
+ if(typeof Worker!=="undefined"){
   try{
-   const result=engine.backtest({leagueMatches:API().getLeagueMatches(league),allMatches:API().getAllHistoricalMatches(),
-    xgRows:xg.filter(x=>x.league===league),maxGames:Number($("v6-test-samples").value)||130});
-   backtestResult={league,result};renderBacktest(result,league);
-  }catch(e){$("v6-backtest-result").replaceChildren(node("p","placeholder","Test tamamlanamadı: "+String(e.message||e)))}
-  finally{runningBacktest=false;button.disabled=false;button.textContent="Geçmiş maçlarla test et"}
+   worker=new Worker("./v6-backtest-worker.js");
+   const job=String(Date.now())+"-"+Math.random().toString(36).slice(2);
+   worker.onmessage=e=>{
+    const msg=e.data||{};if(msg.job!==job)return;
+    if(msg.type==="progress"){
+     button.textContent=msg.done+" / "+msg.total+" maç test ediliyor";
+    }else if(msg.type==="result"){
+     worker?.terminate();worker=null;done(msg.result);
+    }else if(msg.type==="error"){
+     worker?.terminate();worker=null;failure(msg.error||"Test worker hatası");
+    }
+   };
+   worker.onerror=e=>{worker?.terminate();worker=null;failure(e.message||"İşlem çalıştırılamadı")};
+   worker.postMessage({type:"backtest",job,...request});
+   return;
+  }catch(e){worker?.terminate();worker=null}
+ }
+ // Old browsers where workers are blocked: same local calculation, but no background UI guarantee.
+ setTimeout(()=>{
+  try{done(engine.backtest({...request,onProgress:(completed,total)=>{
+   if(completed%30===0)button.textContent=completed+" / "+total+" test";}}))}
+  catch(e){failure(e)}
  },30);
 }
 function parseCSV(raw){
