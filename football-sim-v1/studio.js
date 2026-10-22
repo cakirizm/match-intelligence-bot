@@ -94,8 +94,10 @@ function syncBanner(){
  }
  const age=days(latest,dateToday()),stale=age>14;
  const source=m?.source||"Kaydedilmiş geçmiş veri";
+ const freshFixtures=upcoming().filter(x=>x.date>=dateToday()).length;
+ const lastFixtureSync=m?.fixtureSyncAt?new Date(m.fixtureSyncAt).toLocaleString("tr-TR"):"kaynak kontrol edilmedi";
  const message=(stale?"⚠ SONUÇLAR ESKİ • ":"✓ MAÇ ARŞİVİ • ")+leagueObj().name+" · "+list.length+" maç · Son kaynak skoru: "+fmtDate(latest)+" ("+age+" gün önce) · "+source+
- (stale?" · Güncel sezon bilgisi eksik olabilir.":"");
+ (stale?" · Güncel sezon sonuçları eksik olabilir.":"")+" · "+freshFixtures+" yaklaşan maç · Son fikstür kontrolü: "+lastFixtureSync;
  notify(message,stale);
  text($("data-summary"),leagueObj().name+" · "+list.length+" tamamlanmış maç · "+upcoming().length+" fikstür kaydı · en son skor "+fmtDate(latest)+". Kaynak senkronizasyonu "+(m?.updatedAt?new Date(m.updatedAt).toLocaleString("tr-TR"):"bilinmiyor")+". En son skor tarihi kaynak tarafından sunulur; manuel doğrulama yapılmamıştır.");
 }
@@ -132,6 +134,45 @@ function chooseFixture(m){
  setTimeout(()=>simulate(),150);
  loadNews();
 }
+
+function fmtKickoff(m){
+ if(typeof m.kickoff==="string"&&/^\d{4}-\d\d-\d\dT/.test(m.kickoff)){
+  const dt=new Date(m.kickoff);
+  if(!Number.isNaN(dt.getTime()))return dt.toLocaleTimeString("tr-TR",{hour:"2-digit",minute:"2-digit"});
+ }
+ return m.time?m.time+"*":"Saat yok";
+}
+function dateLabel(d){
+ if(d===dateToday())return "BUGÜN · "+fmtDate(d);
+ const next=new Date();next.setDate(next.getDate()+1);
+ if(d===next.toLocaleDateString("en-CA"))return "YARIN · "+fmtDate(d);
+ return new Date(d+"T12:00:00").toLocaleDateString("tr-TR",{weekday:"long",day:"numeric",month:"long"}).toLocaleUpperCase("tr-TR");
+}
+function latestFixturesAcrossLeagues(){
+ const items=[];
+ for(const l of LEAGUES)for(const fixture of Array.isArray(fixtures[l.id])?fixtures[l.id]:[]){
+  if(fixture&&isDate(fixture.date)&&fixture.date>=dateToday())items.push({...fixture,leagueId:l.id,leagueTitle:l.name});
+ }
+ items.sort((a,b)=>(a.kickoff||a.date+"T"+(a.time||"00:00")).localeCompare(b.kickoff||b.date+"T"+(b.time||"00:00")));
+ return items;
+}
+function renderGlobalFixtures(){
+ const root=$("global-fixtures");if(!root)return;
+ root.replaceChildren();
+ const all=latestFixturesAcrossLeagues().slice(0,12);
+ const count=latestFixturesAcrossLeagues().length;
+ text($("global-fixtures-count"),count?count+" planlanan karşılaşma":"Güncel fikstür bekleniyor");
+ if(!all.length){root.append(node("p","placeholder","Ücretsiz kaynak henüz güncel maç vermedi. ‘Fikstürü Ücretsiz Güncelle’ ile tekrar deneyebilirsin."));return}
+ for(const m of all){
+  const el=node("button","quick-match");el.type="button";
+  el.append(node("span","quick-match-league",LEAGUES.find(x=>x.id===m.leagueId)?.flag+" "+m.leagueTitle),
+  node("strong",null,m.home+" – "+m.away),
+  node("span","quick-match-date",fmtDate(m.date)+" · "+fmtKickoff(m)));
+  el.addEventListener("click",()=>{if(league!==m.leagueId)setLeague(m.leagueId);chooseFixture(m)});
+  root.append(el);
+ }
+}
+
 function renderFixtures(){
  const box=$("fixture-list"),list=fixtureRows(),today=dateToday();box.replaceChildren();
  let subset=list.filter(m=>fixtureFilter==="upcoming"?!m.isResult&&m.date>=today:fixtureFilter==="results"?m.isResult:true);
@@ -492,7 +533,7 @@ function dedupeEntries(rows){
  for(const row of rows){
   if(!row||!isDate(row.date)||!row.home||!row.away||!Number.isInteger(row.hg)||!Number.isInteger(row.ag))continue;
   const key=[row.date,normalized(row.home),normalized(row.away)].join("|");
-  const existing=map.get(key),priority=x=>x?.source==="CSV"?3:x?.source==="football-data.org"?2:1;
+  const existing=map.get(key),priority=x=>x?.source==="CSV"?4:x?.source==="football-data.org"?3:x?.source==="ESPN web feed"?2:1;
   if(!existing||priority(row)>=priority(existing))map.set(key,row);
  }
  return [...map.values()].sort((a,b)=>a.date.localeCompare(b.date));
