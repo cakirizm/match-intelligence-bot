@@ -73,6 +73,7 @@
     renderMetadata();renderFixtures();
   }
   function renderMetadata(){
+    meta=read(META_KEY);
     const banner=$("sync-banner");if(!banner)return;
     const loaded=Object.values(meta).filter(x=>x&&x.count).length;
     const m=meta[league];
@@ -90,6 +91,7 @@
       seasonFlag+" • Son kontrol: "+new Date(m.updatedAt).toLocaleString("tr-TR");
   }
   function renderFixtures(){
+    allFixtures=read(FIXTURE_KEY);
     const root=$("upcoming");if(!root)return;root.replaceChildren();
     const next=(allFixtures[league]||[]).filter(f=>f.date>=today()).slice(0,7);
     if(!next.length){const p=document.createElement("p");p.className="empty";p.textContent="Bu lig için güncel fikstür bulunamadı. Mevcut sezon verisi eksik olabilir.";root.append(p);return}
