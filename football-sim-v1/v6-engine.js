@@ -189,11 +189,11 @@
   let brier=0;for(let i=0;i<3;i++)brier+=Math.pow(pred[i]-expected[i],2);
   return {brier:brier/3,logLoss:-Math.log(Math.max(.000001,pred[outcome]))};
  }
- function backtest({leagueMatches=[],allMatches=[],xgRows=[],maxGames=130,minTrain=75}){
+ function backtest({leagueMatches=[],allMatches=[],xgRows=[],maxGames=130,minTrain=75,onProgress=null}){
   const rows=cleanMatches(leagueMatches),all=cleanMatches(allMatches.length?allMatches:leagueMatches);
   if(rows.length<minTrain+10)return {error:"Bu turnuvada zaman sıralı test için yeterli maç bulunamadı.",required:minTrain+10,available:rows.length};
   const dates=[...new Set(rows.map(x=>x.date))];
-  const tests=rows.filter(m=>rows.findIndex(r=>r.date===m.date)>=minTrain).slice(-Math.max(20,Math.min(250,maxGames)));
+  const tests=rows.filter(m=>rows.findIndex(r=>r.date===m.date)>=minTrain).slice(-Math.max(20,Math.min(500,maxGames)));
   let totals={brier:0,logLoss:0,baselineBrier:0,baselineLogLoss:0,hit:0},validN=0;
   const bins=[{low:0,high:.4,n:0,p:0,correct:0},{low:.4,high:.5,n:0,p:0,correct:0},
    {low:.5,high:.6,n:0,p:0,correct:0},{low:.6,high:.7,n:0,p:0,correct:0},{low:.7,high:1.01,n:0,p:0,correct:0}];
@@ -219,6 +219,7 @@
    const bin=bins.find(b=>top>=b.low&&top<b.high);
    if(bin){bin.n++;bin.p+=top;bin.correct+=correct}
    validN++;
+   if(typeof onProgress==="function"&&(validN%10===0||validN===tests.length))onProgress(validN,tests.length);
    predictions.push({date:match.date,home:match.home,away:match.away,
     hg:match.hg,ag:match.ag,probs:probs.map(p=>Number(p.toFixed(4))),predicted:favorite,actual,confidence:top});
   }
