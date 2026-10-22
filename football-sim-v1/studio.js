@@ -573,6 +573,24 @@ function weightedStats(dataset,team,mode){
  });
  return {gf:weight?scored/weight:null,ga:weight?conceded/weight:null,n:used};
 }
+function scheduleRest(team,date){
+ if(!date||!isDate(date))return {known:false,days:null,played7:0,adjustment:0};
+ const played=new Map();
+ for(const item of LEAGUES)for(const match of Array.isArray(matches[item.id])?matches[item.id]:[]){
+  if(!match||!isDate(match.date)||match.date>=date||
+     !Number.isInteger(match.hg)||!Number.isInteger(match.ag)||
+     !(similarTeam(match.home,team)||similarTeam(match.away,team)))continue;
+  played.set([match.date,teamKey(match.home),teamKey(match.away)].join("|"),match);
+ }
+ const last=[...played.values()].sort((a,b)=>b.date.localeCompare(a.date));
+ if(!last.length)return {known:false,days:null,played7:0,adjustment:0};
+ const rest=days(last[0].date,date);
+ // We only model short rest when the latest prior fixture is known; we do not infer fatigue from a missing result.
+ const played7=last.filter(m=>days(m.date,date)<=7).length;
+ const adjustment=rest<=2?-.045:rest===3?-.025:rest===4?-.012:0;
+ const congestion=played7>=3?-.02:0;
+ return {known:true,days:rest,played7,adjustment:clamp(adjustment+congestion,-.06,0)};
+}
 function modelRates(home,away){
  const past=analysisRows(chosen?.date),h=weightedStats(past,home,"all"),a=weightedStats(past,away,"all");
  const priorSample=past.slice(0,650);
@@ -587,8 +605,9 @@ function modelRates(home,away){
  const baseHome=clamp(.58*blend(h,vh,"gf",priorHome)+.42*blend(a,va,"ga",priorHome),.3,3.6);
  const baseAway=clamp(.58*blend(a,va,"gf",priorAway)+.42*blend(h,vh,"ga",priorAway),.3,3.4);
  const hc=currentContext(home),ac=currentContext(away),hl=lineupEffect(home),al=lineupEffect(away),hn=newsEffect(home),an=newsEffect(away);
- const homeFactor=clamp(1+hc.factor+hl.attack-al.defense*.65+hn.effect,.74,1.26);
- const awayFactor=clamp(1+ac.factor+al.attack-hl.defense*.65+an.effect,.74,1.26);
+ const restHome=scheduleRest(home,chosen?.date),restAway=scheduleRest(away,chosen?.date);
+ const homeFactor=clamp(1+hc.factor+hl.attack-al.defense*.65+hn.effect+restHome.adjustment,.74,1.26);
+ const awayFactor=clamp(1+ac.factor+al.attack-hl.defense*.65+an.effect+restAway.adjustment,.74,1.26);
  const latest=past[0]?.date||"",age=latest?days(latest,dateToday()):999,issue=age>14?"Kaynak sonuçları "+age+" gündür güncel görünmüyor. ":"";
  const warnings=[issue,
   (h.n<5||a.n<5)?"DÜŞÜK GÜVEN: "+home+" "+h.n+" maç, "+away+" "+a.n+" maç; sınırlı veri genel maç gol ortalamalarıyla dengelendi. Gerçek kadro veya oyuncu performansı yerine geçmez. ":"",
@@ -596,10 +615,11 @@ function modelRates(home,away){
   hl.absent+al.absent>0?"KULLANICI SENARYOSU: İlk 11 içinde maç dışı/cezalı işaretli "+(hl.absent+al.absent)+" oyuncu var; bu kesin sakatlık kaydı değildir. ":"",
   hl.doubtful+al.doubtful>0?"Kullanıcının şüpheli işaretlediği "+(hl.doubtful+al.doubtful)+" oyuncuya düşük hazırlık etkisi uygulandı. ":"",
   hl.roleMismatch+al.roleMismatch>0?"Kaynak profil ile simülasyondaki rol arasında "+(hl.roleMismatch+al.roleMismatch)+" olası uyumsuzluk var; bu yalnızca genel mevki kontrolüdür. ":"",
+  restHome.adjustment<0||restAway.adjustment<0?"Takvimden hesaplanan dinlenme günü senaryosu uygulandı; bu, futbolcunun gerçek fiziksel yorgunluk ölçümü değildir. ":"",
   hl.csvStats+al.csvStats>0?"Kullanıcı scout istatistikleri kısmi bir ek sinyal olarak kullanıldı; doğrulama kullanıcıya aittir. ":"",
   hn.count||an.count?"Haber başlıkları doğrulanmış bilgi değildir. Adı kullanıcı ilk 11’iyle eşleşen oyuncu haberi ayrıca ağırlıklandırıldı ("+(hn.playerLinked+an.playerLinked)+" eşleşme). ":"",
   "Model geçmiş skorlarla kalibre edilmiş profesyonel tahmin sistemi değildir."].filter(Boolean);
- return {home:clamp(baseHome*homeFactor,.15,4.2),away:clamp(baseAway*awayFactor,.15,4.2),baseHome,baseAway,homeFactor,awayFactor,hl,al,hc,ac,hn,an,usedHome:h.n,usedAway:a.n,warnings};
+ return {home:clamp(baseHome*homeFactor,.15,4.2),away:clamp(baseAway*awayFactor,.15,4.2),baseHome,baseAway,homeFactor,awayFactor,hl,al,hc,ac,hn,an,restHome,restAway,usedHome:h.n,usedAway:a.n,warnings};
 }
 function samplePoisson(lambda){let sum=0,k=0,p=1,limit=Math.exp(-lambda);do{p*=Math.random();k++}while(p>limit&&k<16);return k-1}
 function detailsRow(parent,label,value){const line=node("div","mini-line");line.append(node("span",null,label),node("b",null,value));parent.append(line)}
