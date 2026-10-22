@@ -14,7 +14,20 @@
  <div class="hero-score"><strong id="total-games">—</strong><span>KAYITLI TAMAMLANMIŞ MAÇ</span><small id="status-top">Kaynaklar kontrol bekliyor</small></div>
 </section>
 <section class="leaguebar" id="leagues" aria-label="Lig seçimi"></section>
-<section class="quick-fixtures-board"><div class="quick-fixtures-head"><div><small class="eyebrow">ALTI TURNUVA / ÜCRETSİZ FİKSTÜR</small><h2>Yaklaşan maçlar</h2><span id="global-fixtures-count" class="small-muted">Ücretsiz maç akışı kontrol ediliyor...</span></div><button id="global-sync" type="button" class="btn primary">↻ Fikstürü Ücretsiz Güncelle</button></div><div class="quick-fixtures-row" id="global-fixtures"><p class="placeholder">Fikstür yükleniyor...</p></div></section>
+<section class="quick-fixtures-board" id="six-league-dashboard" aria-labelledby="global-board-heading">
+ <div class="quick-fixtures-head">
+  <div><small class="eyebrow">BEŞ BÜYÜK LİG + ŞAMPİYONLAR LİGİ / ÜCRETSİZ FİKSTÜR</small><h2 id="global-board-heading">Maç programı & sonuç merkezi</h2><span id="global-fixtures-count" class="small-muted">6 turnuva ücretsiz kontrol ediliyor...</span></div>
+  <button id="global-sync" type="button" class="btn primary">↻ Ücretsiz güncelle</button>
+ </div>
+ <div class="global-fixture-toolbar">
+  <label>GÖSTER<select id="global-mode"><option value="upcoming">Yaklaşan maçlar</option><option value="results">Tamamlanan maçlar</option></select></label>
+  <label>TURNUVA<select id="global-competition"><option value="all">Tüm turnuvalar</option><option value="eng">🇬🇧 Premier League</option><option value="esp">🇪🇸 La Liga</option><option value="ger">🇩🇪 Bundesliga</option><option value="ita">🇮🇹 Serie A</option><option value="fra">🇫🇷 Ligue 1</option><option value="ucl">🏆 Şampiyonlar Ligi</option></select></label>
+  <label>TARİH ARALIĞI<select id="global-range"><option value="7">7 gün</option><option value="30" selected>30 gün</option><option value="90">90 gün</option><option value="365">Sezon</option></select></label>
+  <label class="global-search-wrap">TAKIM ARA<input id="global-search" type="search" placeholder="Arsenal, Bayern, Real Madrid..." aria-label="Bütün liglerde takım ara"></label>
+ </div>
+ <div id="global-fixtures" class="global-fixture-list"><p class="placeholder">Fikstür yükleniyor...</p></div>
+ <p class="global-fixture-disclaimer">Maç programı ücretsiz sağlayıcılardan alınır. UTC bilgisi varsa saatler Dubai saatine çevrilir; yedek kaynakta saat dilimi kesin değilse kaynak saati belirtilir. Takvimler değişebilir. Kaynak: <a href="https://fixturedownload.com/" target="_blank" rel="noopener noreferrer">Fixture Download</a>.</p>
+</section>
 <div class="banner" id="source-banner" role="status">Verileriniz tarayıcıda okunuyor...</div>
 <nav class="tabs" id="tabs">
  <button data-tab="match" class="selected">◈ Maç Merkezi</button>
