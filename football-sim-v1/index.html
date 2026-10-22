@@ -77,8 +77,8 @@
   <div class="v6-lab-grid">
    <article class="panel v6-lab-card">
     <div class="panel-head"><div><small class="eyebrow">01 / GERÇEK GEÇMİŞ MAÇ TESTİ</small><h2>Backtest / kalibrasyon</h2></div><span class="chip">VERİ SIZINTISI YOK</span></div>
-    <p class="v6-muted">Her maç, kendi tarihinden <strong>önceki</strong> sonuçlarla tahmin edilir. Dixon–Coles + Elo tabanının Brier skoru ve log loss değeri hesaplanır. Bu test manuel senaryo etkilerini kapsamaz.</p>
-    <div class="v6-inline"><label for="v6-test-samples">Örneklem</label><select id="v6-test-samples"><option value="80">Son 80 maç</option><option value="130" selected>Son 130 maç</option><option value="220">Son 220 maç</option></select><button id="v6-backtest" class="btn primary" type="button">Geçmiş maçlarla test et</button></div>
+    <p class="v6-muted">Her maç, kendi tarihinden <strong>önceki</strong> sonuçlarla tahmin edilir. Dixon–Coles + Elo tabanının Brier skoru ve log loss değeri hesaplanır. Bu test manuel senaryo etkilerini kapsamaz; işlem mobilde sayfayı dondurmamak için ayrı çalışma sürecinde hesaplanır.</p>
+    <div class="v6-inline"><label for="v6-test-samples">Örneklem</label><select id="v6-test-samples"><option value="80">Son 80 maç</option><option value="130" selected>Son 130 maç</option><option value="220">Son 220 maç</option><option value="500">Son 500 maç</option></select><button id="v6-backtest" class="btn primary" type="button">Geçmiş maçlarla test et</button></div>
     <div id="v6-backtest-result"><p class="placeholder">Test için turnuvayı seç, ardından hesaplamayı başlat.</p></div>
    </article>
    <article class="panel v6-lab-card">
