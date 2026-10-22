@@ -1,32 +1,63 @@
-# SIMULAB — Futbol Simülasyon Merkezi (V1)
+# SIMULAB — Ücretsiz Futbol Simülasyon Merkezi (V1.1)
 
-Sıfır ücretli API bağımlılığıyla çalışan, 6 liglik ve 1.000 Monte Carlo maç simülasyonu yapan statik site.
+Altı lig için geçmiş maçları ücretsiz açık kaynaktan güncelleyen ve **gerçek sonuç istatistiklerine göre 1.000 Monte Carlo simülasyonu** yapan statik Vercel uygulaması.
 
-## Çalışan özellikler
-- Türkiye Süper Ligi, Premier League, La Liga, Bundesliga, Serie A, Ligue 1 seçimi
-- CSV ile lig bazında gerçek geçmiş maç verisi içe aktarma (yalnızca tarayıcı localStorage)
-- Gerçek veriler yokken açıkça etiketlenmiş **tamamen sentetik** takım ve maç demosu
-- Ev/deplasman gol oranları + yakın geçmiş ağırlığı + Poisson gol simülasyonu
-- 1.000 bağımsız koşu; 1×/10×/100× izleme, 1-X-2 dağılımı, en sık skor, KG ve 2.5 Üst
+## Gerçek veriler nasıl yüklenir?
 
-## Bilinen sınırlar
-- **Verileri Güncelle** düğmesi yalnızca CSV içe aktarır. Gerçek zamanlı / otomatik veri sağlayıcısı sonraki aşamadadır.
-- Maç ekran görüntülerinden takım algılama **henüz yok**.
-- Saha top animasyonu temsili; gerçek şut, pas ve oyuncu koordinatlarını simüle etmez.
-- Veri kullanıcının kendi tarayıcısında saklanır, cihazlar arasında paylaşılmaz.
-- Tahmin motoru eğitimli/kalibre edilmiş bir profesyonel tahmin modeli değildir; performansı backtest ile doğrulanmalıdır.
-- Harici CSV verisinin lisans ve kullanım koşullarına uyulmalıdır.
+1. Vercel siteni aç.
+2. Sağ üst **Verileri Güncelle** düğmesine tıkla.
+3. **6 Ligi Güncelle** veya **Seçili Ligi Güncelle** seçeneğine bas.
+4. Kaynak üzerinden 2026-27, 2025-26, 2024-25, 2023-24, 2022-23 sezonları kontrol edilir.
+5. Tamamlanmış maç sonuçları ve mevcut fikstürler **tarayıcının localStorage** alanına kaydedilir.
+6. Takım eşleşmesi seç ve **1.000 Simülasyon Başlat** düğmesini kullan.
 
-## Ücretsiz veri yükleme
-CSV başlıkları: `Date,HomeTeam,AwayTeam,FTHG,FTAG`. Tarih: `YYYY-MM-DD` veya `DD/MM/YYYY`. Boş skorlar atlanır. Geçmiş maçlar yalnızca seçili lige yüklenmelidir.
+Veri kaynağı: [openfootball/football.json](https://github.com/openfootball/football.json), [CC0-1.0](https://github.com/openfootball/football.json/blob/master/LICENSE.md).
+API anahtarı veya ücretli paket gerekmez.
 
-## Vercel
-Git deposu: `cakirizm/match-intelligence-bot`.
-Vercel'de yeni proje oluştururken **Root Directory**: `football-sim-v1`; Framework Preset: **Other**; Build Command: boş (statik site).
+## Ligler ve veri kapsamı
 
-## Yol haritası
-1. GitHub'a ilk sürüm ✅
-2. Vercel'de canlı site
-3. Kullanım lisansı uygun ücretsiz veri kaynağına **Verileri Güncelle** işlevini bağlama
-4. SS ile maç bulma, takım eşleştirme, xG verileri mümkünse geliştirme
-5. Geçmiş maçlarla tahmin başarısı testi
+- İngiltere Premier League: `en.1`
+- İspanya La Liga: `es.1`
+- Almanya Bundesliga: `de.1`
+- İtalya Serie A: `it.1`
+- Fransa Ligue 1: `fr.1`
+- Türkiye Süper Lig: `tr.1`
+
+OpenFootball'da beş büyük ligin 2026-27 dosyalarını doğruladık. Türkiye 2026-27 dosyası 22 Ekim 2026 itibarıyla **mevcut değil**; doğrulanan en güncel Türkiye dosyası 2025-26. Bu nedenle Türkiye Süper Ligi için **2026-27 güncel form verisi garanti edilmez**. Arayüzde en son oynanmış maçın tarihi ve sezon eksikliği gösterilir.
+
+OpenFootball JSON dosyaları her gün otomatik oluşturulabilse de kaynak Football.TXT içerik güncellemeleri anlık olmayabilir. Sonuçlar yalnızca upstream veri ne kadar yeniyse o kadar günceldir.
+
+## Verinin işlenişi
+
+Kaynak URL deseni: `https://raw.githubusercontent.com/openfootball/football.json/master/{season}/{league}.json`. Ağ erişim hatasında jsDelivr mirror denenir.
+
+- `matches[].team1/team2/date` ile maç kimliği, `score.ft=[ev,dep]` veya `score=[ev,dep]` ile tamamlanmış maç sonucu okunur.
+- **Bugünden ileri tarihli skorlar eğitim setine alınmaz**; skor bekleyen gelecekteki maçlar yalnızca fikstür olarak gösterilir.
+- Aynı tarih/ev/deplasman kombinasyonları tekilleştirilir.
+- Önceden elle yüklenmiş CSV maçları yeni senkronizasyonda korunur.
+- Veri yalnızca sayfayı açan tarayıcıda saklanır, veritabanı veya cihazlar arası eşitleme yoktur.
+- Her ligde son veri tarihi ve mevcut sezon dosyası bulunup bulunmadığı açıkça gösterilir.
+- Bir kaynak dosyası mevcut değilse hata gizlenmez; o sezon atlanır ve mevcut yerel veriler silinmez.
+
+## Tahmin motoru
+
+Tarayıcıda çalışan Poisson gol modeli; takımın son maçları, iç/dış saha ayrımı ve hücum/savunma gol oranlarını kullanır. 1.000 bağımsız örnek oluşturur ve 1X2, muhtemel skor dağılımı, karşılıklı gol ve 2,5 üst oranlarını verir.
+
+**Not:** Bu model saha içi gerçek pozisyon, xG, kadro ve sakatlık bilgisi üretmez. Oyuncu/şut koordinat simülasyonu değildir. Olasılıklar kalibre edilmiş veya doğrulanmış bahis tahmini olarak sunulmaz.
+
+## Manuel CSV yedeği
+
+Dilersen `Date,HomeTeam,AwayTeam,FTHG,FTAG` kolonları olan CSV dosyasını seçili lige yükleyebilirsin. Dosya içe aktarımı o ligin tarayıcıdaki kayıtlarını değiştirir. Veri kaynağının kullanım/lisans şartlarına uy.
+
+## Yayınlama
+
+Vercel projesi GitHub'dan `cakirizm/match-intelligence-bot` deposuna bağlı olmalı.
+**Root Directory:** `football-sim-v1`. **Framework Preset:** Other. Build Command boş.
+GitHub main dalına yapılan yeni commitler Vercel Git entegrasyonu etkinse otomatik yayınlanır.
+
+## Sonraki sürüm
+
+1. Türkiye Süper Lig 2026-27 için hukuken uygun ücretsiz güncel kaynak araştırma.
+2. Maç ekran görüntüsünden takım ve fikstür tanıma.
+3. Veri kalitesi, backtest, Elo ve kalibrasyon ekranları.
+4. Gerekirse ücretsiz/uygun lisanslı xG ve olay verisi katmanı.
