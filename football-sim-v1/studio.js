@@ -88,7 +88,7 @@ function syncBanner(){
  text($("total-games"),count.toLocaleString("tr-TR"));
  text($("status-top"),m?.updatedAt?"Kontrol: "+new Date(m.updatedAt).toLocaleDateString("tr-TR"):"Henüz kontrol edilmedi");
  if(!latest){
-  notify(league==="ucl"?"🏆 Şampiyonlar Ligi maçlarını getirmek için ücretsiz football-data.org API anahtarını Vercel'e ekle, sonra ‘Verileri Güncelle → Ücretsiz API’den son sonuçları getir’ de.":"Bu ligde tamamlanmış skor yok. Sağ üstten Verileri Güncelle seçeneğini kullanın.",true);
+  notify("Bu turnuvada henüz tamamlanmış maç yok. Ücretsiz sonuç ve fikstürler otomatik kontrol ediliyor; anahtar gerekmiyor.",true);
   text($("data-summary"),"Bu lig için tamamlanmış sonuç yok.");
   return;
  }
@@ -136,11 +136,12 @@ function chooseFixture(m){
 }
 
 function fmtKickoff(m){
- if(typeof m.kickoff==="string"&&/^\d{4}-\d\d-\d\dT/.test(m.kickoff)){
-  const dt=new Date(m.kickoff);
-  if(!Number.isNaN(dt.getTime()))return dt.toLocaleTimeString("tr-TR",{hour:"2-digit",minute:"2-digit"});
+ const stamp=m.kickoffUtc||m.kickoff;
+ if(typeof stamp==="string"&&/^\d{4}-\d\d-\d\dT/.test(stamp)){
+  const dt=new Date(stamp);
+  if(!Number.isNaN(dt.getTime()))return dt.toLocaleTimeString("tr-TR",{timeZone:"Asia/Dubai",hour:"2-digit",minute:"2-digit"})+" DXB";
  }
- return m.time?m.time+"*":"Saat yok";
+ return m.time?m.time+" (kaynak saati)":"Saat açıklanmadı";
 }
 function dateLabel(d){
  if(d===dateToday())return "BUGÜN · "+fmtDate(d);
@@ -606,52 +607,51 @@ async function syncFreeFixtures(ids=LEAGUES.map(l=>l.id),quiet=false){
  if(syncing){if(!quiet)notify("Başka bir veri güncellemesi devam ediyor.");return {busy:true}}
  syncing=true;
  const buttons=["sync-current","sync-all","sync-live"].map(id=>$(id)).filter(Boolean);
- for(const b of buttons)b.disabled=true;
- const succeeded=[],failed=[];
- const status=$("sync-message");
- const report=message=>{if(status)text(status,message);if(!quiet)notify(message)};
+ buttons.forEach(b=>b.disabled=true);
+ const successes=[],failures=[],status=$("sync-message");
+ const say=message=>{if(status)text(status,message);if(!quiet)notify(message)};
  try{
-  report(ids.length+" turnuva için ücretsiz fikstür ve son skorlar kontrol ediliyor...");
-  const responses=await Promise.all(ids.map(async id=>{
+  say(ids.length+" turnuvanın 2026–27 fikstürü ve son skorları anahtarsız ücretsiz kaynaktan alınıyor...");
+  await Promise.all(ids.map(async id=>{
    const display=LEAGUES.find(l=>l.id===id)?.name||id;
    try{
-    const data=await fetchJson("/api/fixtures?league="+encodeURIComponent(id),18000);
-    if(!Array.isArray(data.complete)||!Array.isArray(data.upcoming))throw Error("Maç akışının formatı hatalı.");
-    if(!data.complete.length&&!data.upcoming.length)throw Error("Kaynak bu dönem için henüz maç döndürmedi.");
-    const alias=name=>canonical(name,id);
-    const completed=data.complete.map(m=>({...m,home:alias(m.home),away:alias(m.away),source:"ESPN web feed"}));
-    const scheduled=data.upcoming.map(m=>({...m,home:alias(m.home),away:alias(m.away),source:"ESPN web feed"}));
+    const data=await fetchJson("/api/fixtures?league="+encodeURIComponent(id),26000);
+    if(!Array.isArray(data.completed)||!Array.isArray(data.upcoming))throw Error("Kaynakta maç listesi yok");
+    if(!data.completed.length&&!data.upcoming.length)throw Error("Bu turnuva için henüz maç sunulmadı");
+    const canon=name=>canonical(name,id);
+    const played=data.completed.filter(m=>m&&isDate(m.date)&&m.date<=dateToday()&&Number.isInteger(m.hg)&&Number.isInteger(m.ag))
+      .map(m=>({...m,home:canon(m.home),away:canon(m.away),source:data.provider,season:"2026-27"}));
+    const newFixtures=data.upcoming.filter(m=>m&&isDate(m.date)&&m.home&&m.away)
+      .map(m=>({...m,home:canon(m.home),away:canon(m.away),source:data.provider,season:"2026-27"}));
     const existing=Array.isArray(matches[id])?matches[id]:[];
-    matches[id]=dedupeEntries([...existing,...completed]);
-    const oldFixtures=Array.isArray(fixtures[id])?fixtures[id]:[];
-    const withinRange=x=>x.date>=data.coverageFrom&&x.date<=data.coverageTo;
-    // When the public schedule is available, replace stale fixtures in its coverage window.
-    const retained=oldFixtures.filter(x=>!withinRange(x));
-    fixtures[id]=dedupeFixture([...retained,...scheduled]).filter(x=>x.date>=dateToday());
-    const previous=metadata[id]||{};
+    // Preserve CC0 history and the locally imported personal data.
+    matches[id]=dedupeEntries([...existing,...played]);
+    const finished=new Set(matches[id].filter(m=>m.season==="2026-27").map(m=>[m.date,normalized(m.home),normalized(m.away)].join("|")));
+    // Direct full-season feed is the freshest: drop stale old scheduled games when it succeeds.
+    fixtures[id]=dedupeFixture(newFixtures).filter(m=>m.date>=dateToday()&&!finished.has([m.date,normalized(m.home),normalized(m.away)].join("|")));
     const latest=matches[id].map(m=>m.date).sort().at(-1)||"";
-    metadata[id]={...previous,source:"OpenFootball CC0 + ESPN public web feed (unofficial)",latestResult:latest,
-     count:matches[id].length,fixtures:fixtures[id].length,updatedAt:new Date().toISOString(),fixtureSyncAt:new Date().toISOString(),
-     fixtureProvider:"ESPN public web scoreboard (unofficial)",fixtureCoverageFrom:data.coverageFrom,fixtureCoverageTo:data.coverageTo,
-     apiKeyRequired:false};
-    succeeded.push({id,display,newResults:completed.length,upcoming:scheduled.length});
-   }catch(e){
-    failed.push({id,display,error:String(e.message||e).slice(0,110)});
-   }
+    metadata[id]={...(metadata[id]||{}),source:"OpenFootball CC0 + "+data.provider,
+     latestResult:latest,count:matches[id].length,fixtures:fixtures[id].length,
+     updatedAt:new Date().toISOString(),fixtureSyncAt:new Date().toISOString(),
+     fixtureProvider:data.provider,fixtureCoverageFrom:"2026-08-01",fixtureCoverageTo:"2027-06-30",
+     fixtureSourceUrl:data.sourceUrl,fixtureSourceZone:data.timezone,fixtureWarning:data.warning||"",
+     fixtureLicense:data.licensing||"Provider terms apply",apiKeyRequired:false};
+    successes.push({id,display,played:played.length,upcoming:fixtures[id].length,provider:data.provider});
+   }catch(e){failures.push({id,display,error:String(e.message||e).slice(0,125)})}
   }));
-  if(succeeded.length){
+  if(successes.length){
    const a=persist(LS.matches,matches),b=persist(LS.fixtures,fixtures),c=persist(LS.meta,metadata);
    refreshCurrent();
-   if(!a||!b||!c)failed.push({display:"Tarayıcı hafızası",error:"Depolama sınırlaması"});
+   if(!a||!b||!c)failures.push({display:"Tarayıcı depolama",error:"Hafıza sınırı"});
   }
-  const successNames=succeeded.map(x=>x.display+": "+x.upcoming+" yaklaşan / "+x.newResults+" skor").join(" · ");
-  const errorNames=failed.map(x=>x.display+": "+x.error).join(" | ");
-  report("Ücretsiz kontrol: "+succeeded.length+"/"+ids.length+" turnuva güncellendi. "+successNames+(failed.length?" • Erişilemeyen: "+errorNames+" • Arşiv korundu.":""));
-  return {succeeded,failed};
- }finally{
-  syncing=false;for(const b of buttons)b.disabled=false;
- }
+  const info="Ücretsiz fikstür: "+successes.length+"/"+ids.length+" turnuva yenilendi. "+
+   successes.map(x=>x.display+": "+x.upcoming+" gelecek / "+x.played+" sonuç").join(" · ")+
+   (failures.length?" | Erişilemeyen: "+failures.map(x=>x.display+" "+x.error).join(" · ")+" | Eski veriler korundu.":"");
+  say(info);
+  return {succeeded:successes,failed:failures};
+ }finally{syncing=false;buttons.forEach(b=>b.disabled=false)}
 }
+
 async function syncSmartAll(){
  if(syncing)return;
  const archive=await syncChampionsArchive();
