@@ -538,7 +538,7 @@ function csvRows(csv){
  for(const row of output){
   let [date,home,away,hg,ag]=idx.map(i=>String(row[i]||"").trim());
   if(/^\d{2}\/\d{2}\/\d{2,4}$/.test(date)){const [d,m,y]=date.split("/");date=(y.length===2?"20"+y:y)+"-"+m+"-"+d}
-  if(!isDate(date)||!/^\d+$/.test(hg)||!/^\d+$/.test(ag)||!home||!away)continue;
+  if(!isDate(date)||date>dateToday()||!/^\d+$/.test(hg)||!/^\d+$/.test(ag)||!home||!away)continue;
   games.push({date,home,away,hg:Number(hg),ag:Number(ag),source:"CSV"});
  }
  if(!games.length)throw Error("Tamamlanmış geçerli maç yok.");
