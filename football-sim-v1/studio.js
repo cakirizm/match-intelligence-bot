@@ -902,7 +902,7 @@ function connectEvents(){
  $("api-status-check").addEventListener("click",checkApi);
 }
 async function startAutoSync(){
- const key="simulab-v4-fixtures-last-attempt";
+ const key="simulab-v4-1-fixtures-last-attempt";
  let last=0;try{last=Number(localStorage.getItem(key)||0)}catch{}
  if(Date.now()-last<6*3600*1000)return;
  try{localStorage.setItem(key,String(Date.now()))}catch{}
