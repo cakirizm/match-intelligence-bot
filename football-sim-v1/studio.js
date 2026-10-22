@@ -105,6 +105,7 @@ function setLeague(id){
  renderLeagues();
  const available=teams();makeOpts($("team-home"),available);makeOpts($("team-away"),available,available[1]||available[0]);
  updateSelectedUI();renderFixtures();syncBanner();
+ if(id==="ucl"&&!matches.ucl?.length)syncChampionsArchive();
 }
 function setTab(name){
  tab=name;document.querySelectorAll("#tabs [data-tab]").forEach(b=>b.classList.toggle("selected",b.dataset.tab===name));
@@ -516,9 +517,30 @@ async function openFootballFile(l,season){
  return null;
 }
 function refreshCurrent(){renderLeagues();const h=$("team-home").value,a=$("team-away").value;makeOpts($("team-home"),teams(),h);makeOpts($("team-away"),teams(),a);syncBanner();renderFixtures();updateSelectedUI()}
+async function syncChampionsArchive(){
+ try{
+  const response=await fetch("./ucl-history.json",{cache:"no-store"});
+  if(!response.ok)throw Error("CC0 arşivi HTTP "+response.status);
+  const json=await response.json();
+  if(json.source!=="openfootball/champions-league"||!Array.isArray(json.matches))throw Error("Arşiv veri formatı değişmiş.");
+  const imported=json.matches.filter(m=>m&&isDate(m.date)&&m.date<=dateToday()&&Number.isInteger(m.hg)&&Number.isInteger(m.ag)&&m.home&&m.away);
+  if(!imported.length)throw Error("Arşiv maçları boş.");
+  const old=Array.isArray(matches.ucl)?matches.ucl:[];
+  matches.ucl=dedupeEntries([...imported,...old]);
+  const latest=matches.ucl.map(m=>m.date).sort().at(-1);
+  metadata.ucl={source:old.some(m=>m.source==="football-data.org")?"OpenFootball UCL CC0 + football-data.org":"OpenFootball UCL CC0 · 2023–2026 arşiv",updatedAt:new Date().toISOString(),latestResult:latest,count:matches.ucl.length,seasons:["2025-26","2024-25","2023-24"],fixtures:(fixtures.ucl||[]).length};
+  persist(LS.matches,matches);persist(LS.meta,metadata);
+  if(league==="ucl")refreshCurrent();
+  return {ok:true,count:matches.ucl.length,latest};
+ }catch(e){
+  notify("Şampiyonlar Ligi açık arşivi yüklenemedi: "+String(e.message||e),true);
+  return {ok:false,error:String(e.message||e)};
+ }
+}
+
 async function syncOpenFootball(ids){
  const needUcl=ids.includes("ucl");ids=ids.filter(id=>id!=="ucl");
- if(needUcl&&!ids.length){await syncApi(["ucl"]);return}
+ if(needUcl&&!ids.length){await syncChampionsArchive();await syncApi(["ucl"]);return}
  if(syncing)return;syncing=true;
  const buttons=[$("sync-current"),$("sync-all"),$("sync-live")];buttons.forEach(b=>b.disabled=true);
  const status=$("sync-message");text(status,"Kaynak bağlantısı kuruluyor...");
@@ -541,7 +563,7 @@ async function syncOpenFootball(ids){
  persist(LS.matches,matches);persist(LS.fixtures,fixtures);persist(LS.meta,metadata);refreshCurrent();
  text(status,ok+"/"+ids.length+" lig güncellendi. "+outcomes.map(x=>LEAGUES.find(l=>l.id===x.id).name+": "+(x.ok?x.count+" sonuç":"HATA "+x.reason)).join(" | "));
  buttons.forEach(b=>b.disabled=false);syncing=false;
- if(needUcl)await syncApi(["ucl"]);
+ if(needUcl){await syncChampionsArchive();await syncApi(["ucl"])}
 }
 async function syncApi(ids=LEAGUES.map(l=>l.id)){
  if(syncing)return;syncing=true;
