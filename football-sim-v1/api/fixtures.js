@@ -89,5 +89,15 @@ export default async function handler(req,res){
   }
  }
  res.setHeader("Cache-Control","public, s-maxage=900, stale-while-revalidate=1800");
- return res.status(200).json({league,season:"2026-27",fetchedAt:new Date().toISOString(),...result});
+ const addKickoff=x=>({...x,kickoff:x.kickoffUtc||null});
+ return res.status(200).json({
+  league,season:"2026-27",fetchedAt:new Date().toISOString(),
+  provider:result.provider,sourceUrl:result.sourceUrl,licensing:result.licensing,timezone:result.timezone,
+  complete:result.completed.map(addKickoff),completed:result.completed.map(addKickoff),
+  upcoming:result.upcoming.map(addKickoff),
+  coverageFrom:"2026-08-01",coverageTo:"2027-07-31",replaceWindow:true,
+  officialApi:false,apiKeyRequired:false,
+  warning:result.warning||null,
+  note:"Public season schedule feed. Times from primary are UTC; data subject to provider terms and updates."
+ });
 }
