@@ -246,8 +246,18 @@ function makeLineupPanel(side,team){
 function renderLineups(){const {home,away}=currentPair();makeLineupPanel("home",home);makeLineupPanel("away",away)}
 const signed=n=>(n>=0?"+":"")+(100*n).toFixed(1)+"%";
 function lineupEffect(team){
- const x=lineupFor(team),positions=FORMS[x.formation];let totalA=0,totalD=0,attack=0,defense=0,filled=0;
+ const x=lineupFor(team),positions=FORMS[x.formation];let totalA=0,totalD=0,attack=0,defense=0,filled=0,sourceProfiles=0,csvStats=0,roleMismatch=0;
  const weights={GK:[.1,1.7],DF:[.35,1.45],MF:[1,1],FW:[1.8,.25]};
+ const scout=read("simulab-v3-scout")[pairKey(team)]?.players||[];
+ const findProfile=name=>scout.find(p=>normalized(p.name)===normalized(name));
+ const officialRole=role=>{
+  const s=String(role||"").toLowerCase();
+  if(/goalkeeper|keeper|kaleci/.test(s))return "GK";
+  if(/defend|defence|back|stoper|defans/.test(s))return "DF";
+  if(/midfield|orta saha/.test(s))return "MF";
+  if(/attack|forward|strik|wing|forvet/.test(s))return "FW";
+  return ["GK","DF","MF","FW"].includes(String(role||"").toUpperCase())?String(role).toUpperCase():null;
+ };
  for(let i=0;i<11;i++){
   const w=weights[positions[i]],[pA,pD]=w,p=x.players[i];
   totalA+=pA;totalD+=pD;
@@ -256,8 +266,23 @@ function lineupEffect(team){
   const diff=(p.rating-6.5)/3.5,condition=(p.fitness-100)/50;
   attack+=(diff*.125+condition*.07)*pA;
   defense+=(diff*.125+condition*.07)*pD;
+  const profile=findProfile(p.name);
+  if(!profile)continue;
+  sourceProfiles++;
+  const knownRole=officialRole(profile.position);
+  if(knownRole&&knownRole!==positions[i]){
+   // Broad role mismatch is a *scenario risk*, not proof that a player cannot play there.
+   attack-=.035*pA;defense-=.035*pD;roleMismatch++;
+  }
+  const mins=Number(profile.minutes),goals=Number(profile.goals),assists=Number(profile.assists);
+  if(profile.minutes!==null&&profile.minutes!==undefined&&mins>=450&&
+     profile.goals!==null&&profile.goals!==undefined&&Number.isFinite(goals)){
+    const rate=90*(goals+(.6*(profile.assists===null||profile.assists===undefined?0:assists)))/mins;
+    const impact=clamp((rate-.3)*.07,-.022,.035);
+    attack+=impact*pA;csvStats++;
+  }
  }
- return {attack:clamp(attack/totalA,-.14,.14),defense:clamp(defense/totalD,-.14,.14),filled};
+ return {attack:clamp(attack/totalA,-.14,.14),defense:clamp(defense/totalD,-.14,.14),filled,sourceProfiles,csvStats,roleMismatch};
 }
 function renderPsych(){
  const {home,away}=currentPair();
@@ -381,6 +406,8 @@ function modelRates(home,away){
  const latest=past[0]?.date||"",age=latest?days(latest,dateToday()):999,issue=age>14?"Kaynak sonuçları "+age+" gündür güncel görünmüyor. ":"";
  const warnings=[issue,
   hl.filled<11||al.filled<11?"Kadro bilgilerinin bir bölümü eksik / varsayımsal. ":"",
+  hl.roleMismatch+al.roleMismatch>0?"Kaynak profil ile simülasyondaki rol arasında "+(hl.roleMismatch+al.roleMismatch)+" olası uyumsuzluk var; bu yalnızca genel mevki kontrolüdür. ":"",
+  hl.csvStats+al.csvStats>0?"Kullanıcı scout istatistikleri kısmi bir ek sinyal olarak kullanıldı; doğrulama kullanıcıya aittir. ":"",
   hn.count||an.count?"Onaylı haber etkileri başlık yorumuna dayanır; doğrulanmış oyuncu haberi değildir. ":"",
   "Model geçmiş skorlarla kalibre edilmiş profesyonel tahmin sistemi değildir."].filter(Boolean);
  return {home:clamp(baseHome*homeFactor,.15,4.2),away:clamp(baseAway*awayFactor,.15,4.2),baseHome,baseAway,homeFactor,awayFactor,hl,al,hc,ac,hn,an,usedHome:h.n,usedAway:a.n,warnings};
