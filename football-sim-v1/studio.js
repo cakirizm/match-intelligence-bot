@@ -570,16 +570,23 @@ function weightedStats(dataset,team,mode){
 }
 function modelRates(home,away){
  const past=analysisRows(chosen?.date),h=weightedStats(past,home,"all"),a=weightedStats(past,away,"all");
- if(h.n<5||a.n<5)throw Error("İki takımın da en az 5 geçmiş tamamlanmış maç kaydı bulunmalı.");
+ const priorSample=past.slice(0,650);
+ const priorHome=priorSample.length>=12?priorSample.reduce((n,m)=>n+m.hg,0)/priorSample.length:1.48;
+ const priorAway=priorSample.length>=12?priorSample.reduce((n,m)=>n+m.ag,0)/priorSample.length:1.16;
  const vh=weightedStats(past,home,"home"),va=weightedStats(past,away,"away");
- const blend=(overall,venue,key,fallback)=>venue.n>=3?.65*venue[key]+.35*(overall[key]??fallback):overall[key]??fallback;
- const baseHome=clamp(.58*blend(h,vh,"gf",1.5)+.42*blend(a,va,"ga",1.5),.3,3.6);
- const baseAway=clamp(.58*blend(a,va,"gf",1.2)+.42*blend(h,vh,"ga",1.2),.3,3.4);
+ const blend=(overall,venue,key,fallback)=>{
+  const value=venue.n>=3?.65*venue[key]+.35*(overall[key]??fallback):(overall[key]??fallback);
+  const reliability=clamp(overall.n/8,0,1);
+  return value*reliability+fallback*(1-reliability);
+ };
+ const baseHome=clamp(.58*blend(h,vh,"gf",priorHome)+.42*blend(a,va,"ga",priorHome),.3,3.6);
+ const baseAway=clamp(.58*blend(a,va,"gf",priorAway)+.42*blend(h,vh,"ga",priorAway),.3,3.4);
  const hc=currentContext(home),ac=currentContext(away),hl=lineupEffect(home),al=lineupEffect(away),hn=newsEffect(home),an=newsEffect(away);
  const homeFactor=clamp(1+hc.factor+hl.attack-al.defense*.65+hn.effect,.74,1.26);
  const awayFactor=clamp(1+ac.factor+al.attack-hl.defense*.65+an.effect,.74,1.26);
  const latest=past[0]?.date||"",age=latest?days(latest,dateToday()):999,issue=age>14?"Kaynak sonuçları "+age+" gündür güncel görünmüyor. ":"";
  const warnings=[issue,
+  (h.n<5||a.n<5)?"DÜŞÜK GÜVEN: "+home+" "+h.n+" maç, "+away+" "+a.n+" maç; sınırlı veri genel maç gol ortalamalarıyla dengelendi. Gerçek kadro veya oyuncu performansı yerine geçmez. ":"",
   hl.filled<11||al.filled<11?"Kadro bilgilerinin bir bölümü eksik / varsayımsal. ":"",
   hl.roleMismatch+al.roleMismatch>0?"Kaynak profil ile simülasyondaki rol arasında "+(hl.roleMismatch+al.roleMismatch)+" olası uyumsuzluk var; bu yalnızca genel mevki kontrolüdür. ":"",
   hl.csvStats+al.csvStats>0?"Kullanıcı scout istatistikleri kısmi bir ek sinyal olarak kullanıldı; doğrulama kullanıcıya aittir. ":"",
