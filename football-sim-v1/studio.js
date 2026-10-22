@@ -29,7 +29,31 @@ const pct=n=>(n*100).toFixed(1)+"%";
 const text=(node,value)=>{node.textContent=String(value);return node};
 const node=(tag,cls,str)=>{const n=document.createElement(tag);if(cls)n.className=cls;if(str!==undefined)n.textContent=String(str);return n};
 const leagueObj=()=>LEAGUES.find(l=>l.id===league);
-const normalized=s=>String(s||"").normalize("NFKD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[&]/g," and ").replace(/[^a-z0-9 ]+/g," ").replace(/\b(fc|cf|afc|sc|club|football|futbol|de|the|a|ac|as|calcio|1907)\b/g," ").replace(/\s+/g," ").trim();
+const TEAM_ALIASES={
+ "man utd":"manchester united","man united":"manchester united",
+ "man city":"manchester city","spurs":"tottenham hotspur",
+ "b dortmund":"borussia dortmund","dortmund":"borussia dortmund",
+ "atleti":"atletico madrid","atletico":"atletico madrid",
+ "paris":"paris saint germain","psg":"paris saint germain",
+ "inter":"internazionale milano","internazionale":"internazionale milano",
+ "milan":"milan","ac milan":"milan",
+ "stuttgart":"vfb stuttgart","leipzig":"rb leipzig",
+ "shakhtar":"shakhtar donetsk","shakhtar donetsk":"shakhtar donetsk",
+ "s bratislava":"slovan bratislava",
+ "lille":"lille","losc lille":"lille",
+ "lens":"lens","racing lens":"lens",
+ "aston villa":"aston villa","coventry":"coventry city",
+ "brighton":"brighton and hove albion","nott m forest":"nottingham forest",
+ "nott forest":"nottingham forest","newcastle":"newcastle united",
+ "hull":"hull city","bournemouth":"bournemouth",
+ "sunderland":"sunderland","arsenal":"arsenal"
+};
+const normalized=s=>{
+ const n=String(s||"").normalize("NFKD").replace(/[\u0300-\u036f]/g,"").toLowerCase()
+  .replace(/[&]/g," and ").replace(/[^a-z0-9 ]+/g," ")
+  .replace(/\b(fc|cf|afc|sc|club|football|futbol|de|the|a|ac|as|calcio|1907)\b/g," ").replace(/\s+/g," ").trim();
+ return TEAM_ALIASES[n]||n;
+};
 function canonical(name,key){
   const own=(matches[key]||[]).flatMap(m=>[m.home,m.away]);
   const names=[...new Set(own)];
