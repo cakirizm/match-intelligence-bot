@@ -320,12 +320,26 @@ function headlineSignal(title){
 function validLink(uri){try{const u=new URL(uri);return u.protocol==="https:"&&["news.google.com","www.google.com"].includes(u.hostname)}catch{return false}}
 function cacheKey(team){return league+"|"+team}
 function newsEffect(team){
- const articles=newsCache[cacheKey(team)]?.items||[],seen=new Set();let effect=0,count=0;
+ const articles=newsCache[cacheKey(team)]?.items||[],seen=new Set();let effect=0,count=0,playerLinked=0;
+ const xi=lineupFor(team),starters=xi.players.filter(p=>p.name).map(p=>({
+  full:p.name,last:normalized(p.name).split(" ").at(-1)
+ }));
  for(const article of articles){
   const key=cacheKey(team)+"|"+article.title;
-  if(approvals[key]&&!seen.has(key)){const signal=headlineSignal(article.title);effect+=signal.impact;count++;seen.add(key)}
+  if(!approvals[key]||seen.has(key))continue;
+  seen.add(key);const signal=headlineSignal(article.title);
+  const title=normalized(article.title);
+  const mentioned=starters.filter(p=>p.last&&p.last.length>=4&&new RegExp("(^| )"+p.last+"( |$)","i").test(title));
+  let contribution=signal.impact;
+  if(["risk","positive"].includes(signal.kind)){
+   // If the headline explicitly names a confirmed XI player, model the scenario more strongly.
+   // Otherwise damp the speculative generic influence rather than assert an absent starter.
+   contribution*=mentioned.length?1:.35;
+   if(mentioned.length)playerLinked++;
+  }
+  effect+=contribution;count++;
  }
- return {effect:clamp(effect,-.08,.08),count};
+ return {effect:clamp(effect,-.08,.08),count,playerLinked};
 }
 function renderNews(){
  const {home,away}=currentPair();
@@ -409,7 +423,7 @@ function modelRates(home,away){
   hl.filled<11||al.filled<11?"Kadro bilgilerinin bir bölümü eksik / varsayımsal. ":"",
   hl.roleMismatch+al.roleMismatch>0?"Kaynak profil ile simülasyondaki rol arasında "+(hl.roleMismatch+al.roleMismatch)+" olası uyumsuzluk var; bu yalnızca genel mevki kontrolüdür. ":"",
   hl.csvStats+al.csvStats>0?"Kullanıcı scout istatistikleri kısmi bir ek sinyal olarak kullanıldı; doğrulama kullanıcıya aittir. ":"",
-  hn.count||an.count?"Onaylı haber etkileri başlık yorumuna dayanır; doğrulanmış oyuncu haberi değildir. ":"",
+  hn.count||an.count?"Haber başlıkları doğrulanmış bilgi değildir. Adı kullanıcı ilk 11’iyle eşleşen oyuncu haberi ayrıca ağırlıklandırıldı ("+(hn.playerLinked+an.playerLinked)+" eşleşme). ":"",
   "Model geçmiş skorlarla kalibre edilmiş profesyonel tahmin sistemi değildir."].filter(Boolean);
  return {home:clamp(baseHome*homeFactor,.15,4.2),away:clamp(baseAway*awayFactor,.15,4.2),baseHome,baseAway,homeFactor,awayFactor,hl,al,hc,ac,hn,an,usedHome:h.n,usedAway:a.n,warnings};
 }
