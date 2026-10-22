@@ -28,7 +28,7 @@ test('alias matching is consistent',()=>{
 test('joint score grid sums to one and Dixon-Coles modifies low-score probability',()=>{
  const a=engine.grid(1.6,1.3,-.1),b=engine.grid(1.6,1.3,0);
  assert.ok(Math.abs(a.probs.reduce((x,y)=>x+y,0)-1)<1e-10);
- assert.notEqual(a.top.find(r=>r.h===0&&r.a===0)?.p,b.top.find(r=>r.h===0&&r.a===0)?.p);
+ assert.notEqual(a.entries.find(r=>r.h===0&&r.a===0)?.p,b.entries.find(r=>r.h===0&&r.a===0)?.p);
  for(let i=0;i<100;i++){
   const [home,away]=engine.sample(a);assert.ok(home>=0&&home<=11&&away>=0&&away<=11);
  }
