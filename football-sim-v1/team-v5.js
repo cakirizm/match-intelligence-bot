@@ -288,9 +288,22 @@ function scheduleSimulation(ms=400){
   API().simulate();
  },ms);
 }
+function applyAutoDraftToEmptyXI(name,league,data){
+ if(!data?.automaticXIAllowed||!Array.isArray(data.players)||data.players.length<11)return false;
+ const pair=API().getState();
+ if(pair.league!==league||(!sameTeam(pair.home,name)&&!sameTeam(pair.away,name)))return false;
+ const currentXI=API().getLineup(name);
+ if(currentXI.players.some(p=>p.name))return false;
+ const shape=currentXI.formation||"4-3-3";
+ const lineup=candidates(data,shape);
+ if(lineup.length!==11||lineup.some(p=>!p))return false;
+ const applied=API().saveLineup(name,lineup.map(p=>p.name),shape);
+ if(applied)scheduleSimulation(650);
+ return !!applied;
+}
 async function fetchTeam(name,league,opts={}){
  const key=pairKey(name,league),existing=cache[key];
- if(!opts.force&&dataFresh(existing)&&existing?.players?.length)return existing;
+ if(!opts.force&&dataFresh(existing)&&existing?.players?.length){if(opts.autoXI)applyAutoDraftToEmptyXI(name,league,existing);return existing}
  const requestTag=++profileSeq;
  if(selected?.name===name&&selected?.league===league)$("team-profile-source").textContent="Ücretsiz takım ve oyuncu kaynakları güncelleniyor...";
  try{
@@ -316,20 +329,7 @@ async function fetchTeam(name,league,opts={}){
    cache[key]=next;save(CACHE,cache);
    if(Array.isArray(next.players)&&next.players.length)saveScout(next,name,league);
    if(selected?.name===name&&selected?.league===league)renderFull();
-   if(opts.autoXI){
-    const current=API().getState();
-    if(current.league!==league||(!sameTeam(current.home,name)&&!sameTeam(current.away,name)))return data;
-    const currentXI=API().getLineup(name);
-    const blank=currentXI.players.every(p=>!p.name);
-    if(blank&&next.automaticXIAllowed&&next.players?.length>=11){
-     const shape=currentXI.formation||"4-3-3";
-     const lineup=candidates(next,shape);
-     if(lineup.length===11&&lineup.every(Boolean)){
-      API().saveLineup(name,lineup.map(p=>p.name),shape);
-      if(sameTeam(current.home,name)||sameTeam(current.away,name))scheduleSimulation(650);
-     }
-    }
-   }
+   if(opts.autoXI)applyAutoDraftToEmptyXI(name,league,next);
   }
   return cache[key];
  }catch(e){
