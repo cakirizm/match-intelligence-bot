@@ -157,20 +157,68 @@ function latestFixturesAcrossLeagues(){
  items.sort((a,b)=>(a.kickoff||a.date+"T"+(a.time||"00:00")).localeCompare(b.kickoff||b.date+"T"+(b.time||"00:00")));
  return items;
 }
+function dubaiDate(m){
+ const dt=new Date(m.kickoffUtc||m.kickoff||"");
+ if(!Number.isNaN(dt.getTime())){
+  const p=new Intl.DateTimeFormat("en-US",{timeZone:"Asia/Dubai",year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(dt);
+  const val=k=>p.find(x=>x.type===k)?.value||"";
+  return val("year")+"-"+val("month")+"-"+val("day");
+ }
+ return m.date;
+}
 function renderGlobalFixtures(){
  const root=$("global-fixtures");if(!root)return;
  root.replaceChildren();
- const all=latestFixturesAcrossLeagues().slice(0,12);
- const count=latestFixturesAcrossLeagues().length;
- text($("global-fixtures-count"),count?count+" planlanan karşılaşma":"Güncel fikstür bekleniyor");
- if(!all.length){root.append(node("p","placeholder","Ücretsiz kaynak henüz güncel maç vermedi. ‘Fikstürü Ücretsiz Güncelle’ ile tekrar deneyebilirsin."));return}
- for(const m of all){
-  const el=node("button","quick-match");el.type="button";
-  el.append(node("span","quick-match-league",LEAGUES.find(x=>x.id===m.leagueId)?.flag+" "+m.leagueTitle),
-  node("strong",null,m.home+" – "+m.away),
-  node("span","quick-match-date",fmtDate(m.date)+" · "+fmtKickoff(m)));
-  el.addEventListener("click",()=>{if(league!==m.leagueId)setLeague(m.leagueId);chooseFixture(m)});
-  root.append(el);
+ const mode=$("global-mode")?.value||"upcoming",category=$("global-competition")?.value||"all",daysWindow=Number($("global-range")?.value)||30;
+ const search=String($("global-search")?.value||"").toLocaleLowerCase("tr").trim(),today=dateToday();
+ const dayDelta=(date,n)=>{const d=new Date(date+"T12:00:00Z");d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10)};
+ const upper=dayDelta(today,daysWindow),lower=dayDelta(today,-daysWindow);
+ let all=[];
+ for(const l of LEAGUES){
+  if(category!=="all"&&category!==l.id)continue;
+  const source=mode==="results"?(Array.isArray(matches[l.id])?matches[l.id]:[]):(Array.isArray(fixtures[l.id])?fixtures[l.id]:[]);
+  for(const m of source){
+   if(!m||!isDate(m.date)||!m.home||!m.away)continue;
+   const isFinished=mode==="results";
+   if(isFinished?(m.date<lower||m.date>today):(m.date<today||m.date>upper))continue;
+   if(search&&!(m.home+" "+m.away+" "+l.name).toLocaleLowerCase("tr").includes(search))continue;
+   all.push({...m,leagueId:l.id,leagueTitle:l.name,leagueFlag:l.flag,isResult:isFinished});
+  }
+ }
+ const stamp=m=>m.kickoffUtc||m.kickoff||m.date+"T"+(m.time||"00:00");
+ all.sort((a,b)=>mode==="results"?stamp(b).localeCompare(stamp(a)):stamp(a).localeCompare(stamp(b)));
+ const total=all.length;
+ text($("global-fixtures-count"),total.toLocaleString("tr-TR")+" maç · "+(mode==="results"?"Sonuçlar":"Fikstür")+" · "+daysWindow+" günlük pencere");
+ if(!total){
+  root.append(node("p","placeholder","Bu filtreye uyan maç bulunamadı. Turnuva, tarih veya arama filtresini değiştir. Ücretsiz kaynak henüz güncel bilgi sağlamamış olabilir."));
+  return;
+ }
+ const showing=all.slice(0,100),lastDay={value:""};
+ for(const m of showing){
+  const day=dubaiDate(m);
+  if(day!==lastDay.value){
+   lastDay.value=day;
+   const group=node("div","global-fixture-day",dateLabel(day)+" · "+fmtDate(day));
+   root.append(group);
+  }
+  const b=node("button","global-fixture-match");b.type="button";
+  const leagueBox=node("span","gfm-league",m.leagueFlag+" "+m.leagueTitle);
+  const row=node("span","gfm-row");
+  const home=node("strong","gfm-home",m.home),away=node("strong","gfm-away",m.away);
+  const resultLabel=m.isResult?m.hg+" - "+m.ag:fmtKickoff(m);
+  const score=node("span","gfm-score"+(m.isResult?" complete":""),resultLabel);
+  row.append(home,score,away);
+  const last=node("span","gfm-extra");
+  last.append(node("span",null,m.round?"HAFTA "+m.round:"2026–27"),node("span","gfm-action",m.isResult?"Yeniden simüle et ↗":"Simüle et ↗"));
+  b.append(leagueBox,row,last);
+  b.addEventListener("click",()=>{
+   if(league!==m.leagueId)setLeague(m.leagueId);
+   chooseFixture(m);
+  });
+  root.append(b);
+ }
+ if(total>showing.length){
+  root.append(node("p","global-fixture-overflow",(total-showing.length)+" maç daha var. Daha dar bir tarih veya takım filtresi kullan."));
  }
 }
 
@@ -796,6 +844,8 @@ function connectEvents(){
  document.addEventListener("keydown",e=>{if(e.key==="Escape")hide()});
  $("sync-current").addEventListener("click",()=>league==="ucl"?syncChampionsArchive().then(()=>syncFreeFixtures(["ucl"])):syncFreeFixtures([league]));
  $("global-sync").addEventListener("click",syncSmartAll);
+ for(const id of ["global-mode","global-competition","global-range"])$(id).addEventListener("change",renderGlobalFixtures);
+ $("global-search").addEventListener("input",renderGlobalFixtures);
  $("sync-all").addEventListener("click",syncSmartAll);
  $("sync-live").addEventListener("click",()=>syncFreeFixtures(LEAGUES.map(l=>l.id)));
  $("import-csv").addEventListener("click",importCsv);
@@ -806,12 +856,13 @@ async function startAutoSync(){
  let last=0;try{last=Number(localStorage.getItem(key)||0)}catch{}
  if(Date.now()-last<6*3600*1000)return;
  try{localStorage.setItem(key,String(Date.now()))}catch{}
- if(LEAGUES.filter(l=>l.id!=="ucl").every(l=>!matches[l.id]?.length)){
-  notify("İlk açılış: ücretsiz maç arşivleri ve fikstür indiriliyor.");
-  await syncOpenFootball(LEAGUES.filter(l=>l.id!=="ucl").map(l=>l.id));
- }
  if(!matches.ucl?.length)await syncChampionsArchive();
  await syncFreeFixtures(LEAGUES.map(l=>l.id),true);
+ // Historical archives enrich the prediction model if the current feed lacks
+ // enough completed games. This is a secondary step, not a requirement for fixtures.
+ if(LEAGUES.filter(l=>l.id!=="ucl").every(l=>(matches[l.id]||[]).length<5)){
+  await syncOpenFootball(LEAGUES.filter(l=>l.id!=="ucl").map(l=>l.id));
+ }
 }
 function init(){
  connectEvents();setLeague("eng");setTab("match");simulationReset();renderGlobalFixtures();
