@@ -54,18 +54,35 @@ const normalized=s=>{
   .replace(/\b(fc|cf|afc|sc|club|football|futbol|de|the|a|ac|as|calcio|1907)\b/g," ").replace(/\s+/g," ").trim();
  return TEAM_ALIASES[n]||n;
 };
+const TEAM_ALIAS_KEYS={
+ "b dortmund":"borussia dortmund","dortmund":"borussia dortmund",
+ "man utd":"manchester united","man united":"manchester united",
+ "man city":"manchester city","spurs":"tottenham hotspur",
+ "nott m forest":"nottingham forest","forest":"nottingham forest",
+ "wolves":"wolverhampton wanderers","brighton":"brighton hove albion",
+ "newcastle":"newcastle united","west ham":"west ham united",
+ "atleti":"atletico madrid","athletic bilbao":"athletic club",
+ "betis":"real betis balompie","inter":"internazionale milano",
+ "internazionale":"internazionale milano","juve":"juventus",
+ "psg":"paris saint germain","paris sg":"paris saint germain",
+ "r madrid":"real madrid","leipzig":"rb leipzig",
+ "frankfurt":"eintracht frankfurt","gladbach":"borussia monchengladbach",
+ "bayern":"bayern munchen"
+};
+function teamKey(name){const n=normalized(name);return TEAM_ALIAS_KEYS[n]||n}
+
 function canonical(name,key){
   const own=(matches[key]||[]).flatMap(m=>[m.home,m.away]);
   const names=[...new Set(own)];
   if(names.includes(name))return name;
-  const n=normalized(name);
+  const n=teamKey(name);
   if(!n)return name;
-  const exact=names.find(s=>normalized(s)===n);
+  const exact=names.find(s=>teamKey(s)===n);
   if(exact)return exact;
   // High-confidence match only; avoid silently merging unrelated club names.
   const words=new Set(n.split(" "));
   const candidates=names.map(original=>{
-    const w=new Set(normalized(original).split(" ")),intersection=[...words].filter(x=>w.has(x)).length;
+    const w=new Set(teamKey(original).split(" ")),intersection=[...words].filter(x=>w.has(x)).length;
     return {name:original,score:intersection/(new Set([...w,...words]).size||1)};
   }).filter(x=>x.score>=.86).sort((a,b)=>b.score-a.score);
   return candidates.length===1?candidates[0].name:name;
@@ -299,7 +316,7 @@ function renderFixtures(){
 function playedBefore(date){
  return currentRows().filter(m=>!date||m.date<date).sort((a,b)=>b.date.localeCompare(a.date));
 }
-function similarTeam(a,b){return normalized(a)===normalized(b) && !!normalized(a)}
+function similarTeam(a,b){return teamKey(a)===teamKey(b) && !!teamKey(a)}
 function analysisRows(date){
  if(league!=="ucl")return playedBefore(date);
  const all=[...currentRows(),...LEAGUES.filter(l=>l.id!=="ucl").flatMap(l=>Array.isArray(matches[l.id])?matches[l.id]:[])];
@@ -634,7 +651,7 @@ function dedupeEntries(rows){
  const map=new Map();
  for(const row of rows){
   if(!row||!isDate(row.date)||!row.home||!row.away||!Number.isInteger(row.hg)||!Number.isInteger(row.ag))continue;
-  const key=[row.date,normalized(row.home),normalized(row.away)].join("|");
+  const key=[row.date,teamKey(row.home),teamKey(row.away)].join("|");
   const existing=map.get(key),priority=x=>x?.source==="CSV"?5:x?.source==="football-data.org"?4:x?.source==="Fixture Download"?3:x?.source==="Open Matchday (attributed noncommercial backup)"?2:x?.source==="ESPN web feed"?2:1;
   if(!existing||priority(row)>=priority(existing))map.set(key,row);
  }
@@ -644,7 +661,7 @@ function dedupeFixture(rows){
  const m=new Map();
  for(const row of rows){
   if(!row||!isDate(row.date)||!row.home||!row.away)continue;
-  m.set([row.date,normalized(row.home),normalized(row.away)].join("|"),row);
+  m.set([row.date,teamKey(row.home),teamKey(row.away)].join("|"),row);
  }
  return [...m.values()].sort((a,b)=>a.date.localeCompare(b.date));
 }
@@ -698,9 +715,9 @@ async function syncFreeFixtures(ids=LEAGUES.map(l=>l.id),quiet=false){
     const existing=Array.isArray(matches[id])?matches[id]:[];
     // Preserve CC0 history and the locally imported personal data.
     matches[id]=dedupeEntries([...existing,...played]);
-    const finished=new Set(matches[id].filter(m=>m.season==="2026-27").map(m=>[m.date,normalized(m.home),normalized(m.away)].join("|")));
+    const finished=new Set(matches[id].filter(m=>m.season==="2026-27").map(m=>[m.date,teamKey(m.home),teamKey(m.away)].join("|")));
     // Direct full-season feed is the freshest: drop stale old scheduled games when it succeeds.
-    fixtures[id]=dedupeFixture(newFixtures).filter(m=>m.date>=dateToday()&&!finished.has([m.date,normalized(m.home),normalized(m.away)].join("|")));
+    fixtures[id]=dedupeFixture(newFixtures).filter(m=>m.date>=dateToday()&&!finished.has([m.date,teamKey(m.home),teamKey(m.away)].join("|")));
     const latest=matches[id].map(m=>m.date).sort().at(-1)||"";
     metadata[id]={...(metadata[id]||{}),source:"OpenFootball CC0 + "+data.provider,
      latestResult:latest,count:matches[id].length,fixtures:fixtures[id].length,
