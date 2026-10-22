@@ -635,7 +635,7 @@ function dedupeEntries(rows){
  for(const row of rows){
   if(!row||!isDate(row.date)||!row.home||!row.away||!Number.isInteger(row.hg)||!Number.isInteger(row.ag))continue;
   const key=[row.date,normalized(row.home),normalized(row.away)].join("|");
-  const existing=map.get(key),priority=x=>x?.source==="CSV"?4:x?.source==="football-data.org"?3:x?.source==="ESPN web feed"?2:1;
+  const existing=map.get(key),priority=x=>x?.source==="CSV"?5:x?.source==="football-data.org"?4:x?.source==="Fixture Download"?3:x?.source==="Open Matchday (attributed noncommercial backup)"?2:x?.source==="ESPN web feed"?2:1;
   if(!existing||priority(row)>=priority(existing))map.set(key,row);
  }
  return [...map.values()].sort((a,b)=>a.date.localeCompare(b.date));
@@ -876,7 +876,7 @@ function connectEvents(){
  $("api-status-check").addEventListener("click",checkApi);
 }
 async function startAutoSync(){
- const key="simulab-v3-fixtures-last-attempt";
+ const key="simulab-v4-fixtures-last-attempt";
  let last=0;try{last=Number(localStorage.getItem(key)||0)}catch{}
  if(Date.now()-last<6*3600*1000)return;
  try{localStorage.setItem(key,String(Date.now()))}catch{}
