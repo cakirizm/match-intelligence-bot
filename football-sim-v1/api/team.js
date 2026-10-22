@@ -167,7 +167,7 @@ async function wikiSearch(team,known){
  if(known&&typeof known==="string"&&/wikipedia\.org\/wiki\//.test(known)){
   try{const u=new URL(known.startsWith("http")?known:"https://"+known);if(u.hostname==="en.wikipedia.org")return decodeURIComponent(u.pathname.replace(/^\/wiki\//,"")).replace(/_/g," ")}catch{}
  }
- const url=WIKI+"?"+new URLSearchParams({action:"query",list:"search",srsearch:team+" football club",srlimit:"5",srnamespace:"0",format:"json"}).toString();
+ const url=WIKI+"?action=query&list=search&srsearch="+encodeURIComponent(team+" football club")+"&srlimit=5&srnamespace=0&format=json";
  const data=await fetchJSON(url,10000);
  const rows=data.query?.search||[];
  const rated=rows.filter(x=>!/women|season|history|youth|manager|reserve/i.test(x.title))
@@ -177,7 +177,7 @@ async function wikiSearch(team,known){
 async function wikiPlayers(team,profile){
  const title=await wikiSearch(team,profile?.wikipedia);
  if(!title)throw Error("Wikipedia takım sayfası güvenilir biçimde eşleştirilemedi");
- const url=WIKI+"?"+new URLSearchParams({action:"parse",page:title,prop:"wikitext",redirects:"1",format:"json"}).toString();
+ const url=WIKI+"?action=parse&page="+encodeURIComponent(title)+"&prop=wikitext&redirects=1&format=json";
  const data=await fetchJSON(url,16500),raw=data.parse?.wikitext?.["*"];
  if(!raw)throw Error("Wikipedia kadro içeriği alınamadı");
  const players=extractSquad(raw);
