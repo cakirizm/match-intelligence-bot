@@ -146,7 +146,7 @@ function fmtKickoff(m){
 function dateLabel(d){
  if(d===dateToday())return "BUGÜN · "+fmtDate(d);
  const next=new Date();next.setDate(next.getDate()+1);
- if(d===next.toLocaleDateString("en-CA"))return "YARIN · "+fmtDate(d);
+ if(d===next.getFullYear()+"-"+String(next.getMonth()+1).padStart(2,"0")+"-"+String(next.getDate()).padStart(2,"0"))return "YARIN · "+fmtDate(d);
  return new Date(d+"T12:00:00").toLocaleDateString("tr-TR",{weekday:"long",day:"numeric",month:"long"}).toLocaleUpperCase("tr-TR");
 }
 function latestFixturesAcrossLeagues(){
@@ -214,7 +214,7 @@ function renderFixtures(){
   const content=node("span","fixture-team-cell");
   content.append(node("span","fixture-teams",m.home+"  —  "+m.away));
   const rawSource=String(m.source||m.provider||"");
-  const source=rawSource.includes("ESPN")?"GÜNCEL WEB":rawSource.includes("football-data")?"RESMÎ API":rawSource.includes("OpenFootball")?"AÇIK ARŞİV":"YEREL VERİ";
+  const source=rawSource.includes("ESPN")?"WEB SKOR AKIŞI":rawSource.includes("football-data")?"FUTBOL API":rawSource.includes("OpenFootball")?"AÇIK ARŞİV":"YEREL VERİ";
   content.append(node("small","fixture-provider",source));
   const score=node("span","fixture-score",m.isResult?m.hg+" : "+m.ag:"SİMÜLE ↗");
   b.append(date,content,score);
@@ -770,11 +770,11 @@ async function importCsv(){
  }catch(e){text($("sync-message"),"İçe aktarım hatası: "+String(e.message||e))}
 }
 async function checkApi(){
- text($("api-status-text"),"Kontrol ediliyor...");
+ text($("api-status-text"),"Anahtarsız ücretsiz veri akışı kontrol ediliyor...");
  try{
-  const response=await fetchJson("/api/matches?league="+league,18000);
-  text($("api-status-text"),"Ücretsiz API aktif. "+(response.completed?.length||0)+" tamamlanmış ve "+(response.upcoming?.length||0)+" planlanan maç kayıtlı. Servis skorları gecikmeli verebilir.");
- }catch(e){text($("api-status-text"),"Henüz aktif değil: "+String(e.message||e))}
+  const response=await fetchJson("/api/fixtures?league="+league,18000);
+  text($("api-status-text"),"Ücretsiz akış erişilebilir: "+(response.complete?.length||0)+" tamamlanmış ve "+(response.upcoming?.length||0)+" planlanan maç ("+fmtDate(response.coverageFrom)+" – "+fmtDate(response.coverageTo)+"). Kaynak resmî API olmadığı için veri ve erişim garantisi yoktur.");
+ }catch(e){text($("api-status-text"),"Şu anda anahtarsız akış erişilemiyor: "+String(e.message||e)+". Mevcut arşiv korunacak.")}
 }
 function connectEvents(){
  for(const b of document.querySelectorAll("#tabs [data-tab]"))b.addEventListener("click",()=>setTab(b.dataset.tab));
@@ -795,6 +795,7 @@ function connectEvents(){
  $("sync-modal").addEventListener("click",e=>{if(e.target===$("sync-modal"))hide()});
  document.addEventListener("keydown",e=>{if(e.key==="Escape")hide()});
  $("sync-current").addEventListener("click",()=>league==="ucl"?syncChampionsArchive().then(()=>syncFreeFixtures(["ucl"])):syncFreeFixtures([league]));
+ $("global-sync").addEventListener("click",syncSmartAll);
  $("sync-all").addEventListener("click",syncSmartAll);
  $("sync-live").addEventListener("click",()=>syncFreeFixtures(LEAGUES.map(l=>l.id)));
  $("import-csv").addEventListener("click",importCsv);
