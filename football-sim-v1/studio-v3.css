@@ -218,3 +218,13 @@
 .team-xi-controls select{max-width:none}
 .v5-run-grid{grid-template-columns:1fr 1fr}
 }
+
+.match-lineup-source{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 12px;margin-bottom:12px;border:1px solid #335364;background:#112c3a;border-radius:10px}
+.match-lineup-source strong{display:block;font-size:11px;color:#dffbf2}
+.match-lineup-source span{display:block;font-size:10px;color:#abc8d2;margin-top:2px;line-height:1.4}
+.match-lineup-source button{font-size:10px;flex-shrink:0;padding:8px}
+.team-change-log{padding:12px;background:#0c2433;border:1px solid #315568;border-radius:10px;display:grid;gap:7px;margin-top:12px}
+.team-change-log strong{font-size:12px;color:var(--mint)}
+.team-change-log p{font-size:11px;color:#c0d7e0;margin:0;line-height:1.6}
+.team-change-log a{color:#91e2dc;font-size:11px}
+@media(max-width:600px){.match-lineup-source{align-items:flex-start}.match-lineup-source button{max-width:115px;white-space:normal}}
