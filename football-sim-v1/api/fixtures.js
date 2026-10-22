@@ -54,7 +54,7 @@ function openLigaGame(m){
  const d=iso.slice(0,10);
  return normal({date:d,home:m.team1?.teamName,away:m.team2?.teamName,
   hg:m.matchIsFinished?result?.pointsTeam1:null,ag:m.matchIsFinished?result?.pointsTeam2:null,
-  kickoff:/^\d{4}-\d\d-\d\dT/.test(iso)&&m.matchDateTimeUTC?iso+"Z".replace("ZZ","Z"):null,
+  kickoff:/^\d{4}-\d\d-\d\dT/.test(iso)&&m.matchDateTimeUTC?( /(?:Z|[+-]\d\d:\d\d)$/.test(iso)?iso:iso+"Z"):null,
   time:iso.slice(11,16),source:"OpenLigaDB ODbL",round:m.group?.groupName||null,eventId:m.matchID});
 }
 async function openLiga(shortcut){
