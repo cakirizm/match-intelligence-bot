@@ -200,7 +200,11 @@
    const distribution=grid(estimate.home,estimate.away,estimate.rho);
    const probs=distribution.probs,actual=match.hg>match.ag?0:match.hg===match.ag?1:2;
    const m=metrics(probs,actual);
-   const ref=[.44,.27,.29],baseline=metrics(ref,actual);
+   // Rolling league-specific prior baseline: only earlier matches, with light shrinkage.
+   const window=training.slice(-140),count=[7,5,6];
+   for(const prev of window)count[prev.hg>prev.ag?0:prev.hg===prev.ag?1:2]++;
+   const denom=count.reduce((a,b)=>a+b,0),ref=count.map(x=>x/denom);
+   const baseline=metrics(ref,actual);
    totals.brier+=m.brier;totals.logLoss+=m.logLoss;
    totals.baselineBrier+=baseline.brier;totals.baselineLogLoss+=baseline.logLoss;
    const favorite=probs.indexOf(Math.max(...probs)),top=probs[favorite],correct=favorite===actual?1:0;
@@ -219,7 +223,7 @@
    hitRate:ratio(totals.hit),
    calibration:bins.filter(b=>b.n>0).map(b=>({range:Math.round(b.low*100)+"–"+Math.round(Math.min(b.high,1)*100)+"%",n:b.n,p:Number((b.p/b.n).toFixed(3)),observed:Number((b.correct/b.n).toFixed(3))})),
    predictions:predictions.slice(-12),
-   methodology:"Kesim tarihinden sonraki skorlar eğitimde kullanılmadı. Aynı gün oynanan maçlar da dışlandı. Brier 3 sınıf ortalamasıdır; küçük değer daha iyi. Referans (%44/%27/%29) sabit ve kalibre edilmemiştir. Sonuçlar veri kapsamına bağlıdır."};
+   methodology:"Kesim tarihinden sonraki skorlar eğitimde kullanılmadı. Aynı gün oynanan maçlar da dışlandı. Brier 3 sınıf ortalamasıdır; küçük değer daha iyi. Referans, her test maçı öncesindeki son 140 lig sonucundan hesaplanan ev/beraberlik/deplasman sıklığıdır ve geçmiş veri dışında bilgi kullanmaz. Sonuçlar veri kapsamına bağlıdır."};
  }
  const api={norm,key,cleanMatches,eloRatings,predict,grid,sample,tacticFactors,backtest,xgInfo,metrics};
  root.SIMULAB_ENGINE_V6=api;
