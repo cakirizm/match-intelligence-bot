@@ -723,13 +723,15 @@ async function syncFreeFixtures(ids=LEAGUES.map(l=>l.id),quiet=false){
     // Preserve CC0 history and the locally imported personal data.
     matches[id]=dedupeEntries([...existing,...played]);
     const finished=new Set(matches[id].filter(m=>m.season==="2026-27").map(m=>[m.date,teamKey(m.home),teamKey(m.away)].join("|")));
-    // Direct full-season feed is the freshest: drop stale old scheduled games when it succeeds.
-    fixtures[id]=dedupeFixture(newFixtures).filter(m=>m.date>=dateToday()&&!finished.has([m.date,teamKey(m.home),teamKey(m.away)].join("|")));
+    // Full-season open feed replaces stale dates, but partial free API response must NOT erase existing future matches.
+    const priorUpcoming=Array.isArray(fixtures[id])?fixtures[id]:[];
+    const preserved=data.replaceWindow===false?priorUpcoming:[];
+    fixtures[id]=dedupeFixture([...preserved,...newFixtures]).filter(m=>m.date>=dateToday()&&!finished.has([m.date,teamKey(m.home),teamKey(m.away)].join("|")));
     const latest=matches[id].map(m=>m.date).sort().at(-1)||"";
     metadata[id]={...(metadata[id]||{}),source:"OpenFootball CC0 + "+data.provider,
      latestResult:latest,count:matches[id].length,fixtures:fixtures[id].length,
      updatedAt:new Date().toISOString(),fixtureSyncAt:new Date().toISOString(),
-     fixtureProvider:data.provider,fixtureCoverageFrom:"2026-08-01",fixtureCoverageTo:"2027-06-30",
+     fixtureProvider:data.provider,fixtureCoverageFrom:data.coverageFrom||null,fixtureCoverageTo:data.coverageTo||null,
      fixtureSourceUrl:data.sourceUrl,fixtureSourceZone:data.timezone,fixtureWarning:data.warning||"",
      fixtureLicense:data.licensing||"Provider terms apply",apiKeyRequired:false};
     successes.push({id,display,played:played.length,upcoming:fixtures[id].length,provider:data.provider});
