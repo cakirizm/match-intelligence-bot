@@ -19,7 +19,7 @@ const read=key=>{try{const o=JSON.parse(localStorage.getItem(key)||"{}");return 
 const persist=(key,o)=>{try{localStorage.setItem(key,JSON.stringify(o));return true}catch{notify("Tarayıcı depolama sınırına ulaşıldı; bilgiler kaydedilemedi.",true);return false}};
 let matches=read(LS.matches),fixtures=read(LS.fixtures),metadata=read(LS.meta),lineups=read(LS.lineups),contexts=read(LS.context),approvals=read(LS.approvals);
 let league="eng",chosen=null,fixtureFilter="upcoming",speed=100,runToken=0,newsToken=0,syncing=false,newsCache={},tab="match";
-const dateToday=()=>new Date().toISOString().slice(0,10); // UTC date - independent of client locale
+const dateToday=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,10)}; // Browser-local calendar date
 const isDate=s=>/^\d{4}-\d{2}-\d{2}$/.test(String(s||""))&&!Number.isNaN(Date.parse(s));
 const fmtDate=s=>isDate(s)?s.slice(8,10)+"."+s.slice(5,7)+"."+s.slice(0,4):"—";
 const days=(a,b)=>Math.round((Date.parse(b+"T00:00:00Z")-Date.parse(a+"T00:00:00Z"))/86400000);
@@ -83,7 +83,7 @@ function renderLeagues(){
 }
 function syncBanner(){
  const m=metadata[league],list=currentRows(),latest=list.map(x=>x.date).sort().at(-1);
- const count=Object.values(matches).reduce((n,v)=>n+(Array.isArray(v)?v.length:0),0);
+ const count=LEAGUES.reduce((n,l)=>n+(Array.isArray(matches[l.id])?matches[l.id].length:0),0);
  text($("total-games"),count.toLocaleString("tr-TR"));
  text($("status-top"),m?.updatedAt?"Kontrol: "+new Date(m.updatedAt).toLocaleDateString("tr-TR"):"Henüz kontrol edilmedi");
  if(!latest){
@@ -93,7 +93,7 @@ function syncBanner(){
  }
  const age=days(latest,dateToday()),stale=age>14;
  const source=m?.source||"Kaydedilmiş geçmiş veri";
- const message=(stale?"⚠ SONUÇLAR ESKİ • ":"✓ MAÇ ARŞİVİ • ")+leagueObj().name+" · "+list.length+" maç · En son doğrulanmamış kaynak sonucu: "+fmtDate(latest)+" ("+age+" gün önce) · "+source+
+ const message=(stale?"⚠ SONUÇLAR ESKİ • ":"✓ MAÇ ARŞİVİ • ")+leagueObj().name+" · "+list.length+" maç · Son kaynak skoru: "+fmtDate(latest)+" ("+age+" gün önce) · "+source+
  (stale?" · Güncel sezon bilgisi eksik olabilir.":"");
  notify(message,stale);
  text($("data-summary"),leagueObj().name+" · "+list.length+" tamamlanmış maç · "+upcoming().length+" fikstür kaydı · en son skor "+fmtDate(latest)+". Kaynak senkronizasyonu "+(m?.updatedAt?new Date(m.updatedAt).toLocaleString("tr-TR"):"bilinmiyor")+". En son skor tarihi kaynak tarafından sunulur; manuel doğrulama yapılmamıştır.");
@@ -273,7 +273,7 @@ function headlineSignal(title){
  if(/\b(injury|injured|injuries|sidelined|ruled out|out for|hamstring|knee injury|ankle injury|fitness doubt|doubtful)\b/.test(s))return {label:"Olası sakatlık/kadro riski",note:"Başlıktaki kadro riski teyit edilirse olumsuz senaryo.",impact:-.025,kind:"risk"};
  if(/\b(suspended|suspension|banned|red card|ban)\b/.test(s))return {label:"Olası ceza/eksik",note:"Oyuncunun takım ve maç uygunluğunu doğrulayın.",impact:-.028,kind:"risk"};
  if(/\b(return|returns|back in training|available|fully fit|cleared to play|comeback)\b/.test(s))return {label:"Olası kadro dönüşü",note:"Dönen kişinin oynayacağı kesin değildir.",impact:.017,kind:"positive"};
- if(/\b(crisis|under pressure|sacked|dismissed|dressing room|losing streak)\b/.test(s))return {label:"Takım baskısı/teknik ekip haberi",note:"Başlığın anlamı doğrulanmadan ruh hâli çıkarılamaz.",impact:-.012,kind:"context"};
+ if(/\b(crisis|under pressure|faces pressure|pressure mounts|sacked|dismissed|dressing room|losing streak)\b/.test(s))return {label:"Takım baskısı/teknik ekip haberi",note:"Başlığın anlamı doğrulanmadan ruh hâli çıkarılamaz.",impact:-.012,kind:"context"};
  if(/\b(winning streak|unbeaten|boost|confidence)\b/.test(s))return {label:"Olası olumlu atmosfer",note:"Bir haber başlığı özgüveni kesin olarak ölçmez.",impact:.012,kind:"positive"};
  return {label:"Genel takım haberi",note:"Doğrudan model etkisi önerilmedi.",impact:0,kind:"neutral"};
 }
@@ -431,7 +431,9 @@ function dedupeEntries(rows){
  const map=new Map();
  for(const row of rows){
   if(!row||!isDate(row.date)||!row.home||!row.away||!Number.isInteger(row.hg)||!Number.isInteger(row.ag))continue;
-  map.set([row.date,normalized(row.home),normalized(row.away)].join("|"),row);
+  const key=[row.date,normalized(row.home),normalized(row.away)].join("|");
+  const existing=map.get(key),priority=x=>x?.source==="CSV"?3:x?.source==="football-data.org"?2:1;
+  if(!existing||priority(row)>=priority(existing))map.set(key,row);
  }
  return [...map.values()].sort((a,b)=>a.date.localeCompare(b.date));
 }
@@ -484,7 +486,7 @@ async function syncOpenFootball(ids){
   matches[id]=dedupeEntries([...(Array.isArray(matches[id])?matches[id]:[]),...games]);
   fixtures[id]=dedupeFixture([...(Array.isArray(fixtures[id])?fixtures[id]:[]),...next]).filter(x=>x.date>=dateToday());
   const latest=matches[id].map(x=>x.date).sort().at(-1);
-  metadata[id]={source:"OpenFootball CC0",updatedAt:new Date().toISOString(),latestResult:latest,seasons,failed,fixtures:fixtures[id].length,count:matches[id].length};
+  metadata[id]={source:matches[id].some(m=>m.source==="football-data.org")?"OpenFootball + football-data.org free":"OpenFootball CC0",updatedAt:new Date().toISOString(),latestResult:latest,seasons,failed,fixtures:fixtures[id].length,count:matches[id].length};
   text(status,l.name+" tamamlandı · "+matches[id].length+" maç");
   return {id,ok:true,count:matches[id].length,missing:failed.length};
  }));
