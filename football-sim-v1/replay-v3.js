@@ -90,22 +90,77 @@ function makeGoalSequence(h,a,homePlayers,awayPlayers){
  return events.sort((x,y)=>x.minute-y.minute);
 }
 function buildNarrative(trial,players,model){
- const [h,a]=trial,homes=players.filter(p=>p.side==="home"),aways=players.filter(p=>p.side==="away"),goals=makeGoalSequence(h,a,homes,aways);
+ // Connected synthetic possessions instead of independent randomly scattered moments.
+ // The terminal score is sampled by V6 Dixon-Coles; narrative never claims real match events.
+ const [scoreHome,scoreAway]=trial,teams={home:players.filter(p=>p.side==="home"),away:players.filter(p=>p.side==="away")};
+ const tactic=window.SIMULAB_V6?.getTactics?.()||{};
+ const goalsRemaining={home:scoreHome,away:scoreAway};
  const events=[{minute:0,type:"kickoff",side:"home",player:null,label:"Başlangıç vuruşu"}];
- // 22 plausible non-scoring actions: illustrative rather than tracked possessions.
- for(let i=0;i<26;i++){
-  const minute=3+Math.floor(Math.random()*87),side=Math.random()<(model.home/(model.home+model.away))?"home":"away";
-  const picked=chooseWeighted(side==="home"?homes:aways);
-  const type=Math.random()<.4?"shot":Math.random()<.7?"build":"chance";
-  const dictionary={shot:"Şut girişimi",build:"Paslarla hücum kuruluyor",chance:"Tehlikeli hücum"};
-  events.push({minute,type,side,player:picked.id,label:dictionary[type]+" • "+picked.name,
-   x:side==="home"?45+Math.random()*45:10+Math.random()*45,y:12+Math.random()*76});
+ const count=20+Math.floor(Math.random()*9),strength=Math.max(.01,model.home+model.away);
+ const chains=[];
+ for(let i=0;i<count;i++){
+  const minute=2+Math.floor(i*86/count)+Math.floor(Math.random()*3);
+  const side=Math.random()<model.home/strength?"home":"away";
+  chains.push({minute:clamp(minute,2,88),side});
  }
- events.push(...goals);
+ // Guarantee at least one attacking chain per simulated goal, even in rare high-score paths.
+ for(const side of ["home","away"]){
+  let has=chains.filter(c=>c.side===side);
+  while(has.length<goalsRemaining[side]){
+   const ch={minute:3+Math.floor(Math.random()*84),side};chains.push(ch);has.push(ch);
+  }
+ }
+ for(const side of ["home","away"]){
+  const opportunities=chains.filter(c=>c.side===side).sort(()=>Math.random()-.5);
+  for(let i=0;i<goalsRemaining[side];i++)opportunities[i].goal=true;
+ }
+ chains.sort((a,b)=>a.minute-b.minute);
+ const pickRole=(list,desired)=>{
+  const candidates=list.filter(p=>desired.includes(p.role));
+  return candidates.length?candidates[Math.floor(Math.random()*candidates.length)]:list[Math.floor(Math.random()*list.length)];
+ };
+ for(const chain of chains){
+  const {side,minute}=chain,list=teams[side],direction=side==="home"?1:-1;
+  if(!list.length)continue;
+  const forwards=list.filter(p=>p.role==="FW"||p.role==="MF");
+  const starter=pickRole(list,["DF","MF"]);
+  const runner=pickRole(list,["MF","FW"]);
+  const striker=chooseWeighted(forwards.length?forwards:list);
+  const press=tactic[side==="home"?"homePress":"awayPress"]||"normal";
+  const style=tactic[side==="home"?"homeStyle":"awayStyle"]||"balanced";
+  const left=x=>side==="home"?x:100-x,vertical=()=>clamp(16+Math.random()*68,13,87);
+  const base=vertical();
+  events.push({minute,type:"recover",side,player:starter.id,
+   label:(press==="high"?"Önde baskıyla":"Orta alanda")+" top kazanımı · "+starter.name,x:left(25),y:base});
+  const mid=Math.min(89,minute+1);
+  events.push({minute:mid,type:"build",side,player:runner.id,
+   label:(style==="direct"?"Hızlı dikine pas":style==="counter"?"Geçiş hücumu":style==="possession"?"Pas zinciri":"Hücum organizasyonu")+" · "+runner.name,x:left(55),y:vertical()});
+  if(!chain.goal&&Math.random()<.22){
+   events.push({minute:Math.min(89,minute+2),type:"turnover",side,player:runner.id,
+    label:"Rakip baskısıyla top kaybı · "+runner.name,x:left(64),y:vertical()});
+   continue;
+  }
+  const attackMinute=Math.min(89,minute+2);
+  events.push({minute:attackMinute,type:"chance",side,player:striker.id,
+    label:"Ceza sahasına giriş · "+striker.name,x:left(76),y:vertical()});
+  const goalMinute=Math.min(89,minute+3);
+  if(chain.goal){
+   const scorer=chooseWeighted(list),assistant=Math.random()<.67?chooseAssister(list,scorer):null;
+   events.push({minute:goalMinute,type:"goal",side,player:scorer.id,scorer:scorer.name,
+    assist:assistant?.name||null,assistantId:assistant?.id||null,
+    label:"GOL • "+scorer.name,x:left(92),y:46+Math.random()*12});
+  }else{
+   const type=Math.random()<.23?"save":Math.random()<.5?"shot":"blocked";
+   const description={save:"Kaleci kurtarışı",shot:"Şut auta çıktı",blocked:"Savunma şutu engelledi"}[type];
+   events.push({minute:goalMinute,type,side,player:striker.id,label:description+" · "+striker.name,x:left(88),y:vertical()});
+  }
+ }
  events.push({minute:45,type:"break",side:null,player:null,label:"Devre arası"},{minute:90,type:"end",side:null,player:null,label:"Maç sona erdi"});
- events.sort((a,b)=>a.minute-b.minute||(a.type==="goal"?1:-1));
+ const priority={kickoff:0,recover:1,build:2,turnover:3,chance:4,shot:5,save:5,blocked:5,goal:6,break:7,end:8};
+ events.sort((a,b)=>a.minute-b.minute||(priority[a.type]??5)-(priority[b.type]??5));
  return events;
 }
+
 function pitchPlayers(players){
  const layer=$("r-player-layer");layer.replaceChildren();
  for(const p of players){
@@ -184,7 +239,14 @@ function updateAtMinute(){
   const player=r.players.find(p=>p.id===last.player);
   ball.style.left=(last.x!==undefined?last.x:player?player.x:50)+"%";
   ball.style.top=(last.y!==undefined?last.y:player?player.y:50)+"%";
-  for(const p of r.players){const el=$("r-player-"+p.id);el?.classList.toggle("ractive",p.id===last.player)}
+  for(const p of r.players){
+   const el=$("r-player-"+p.id);
+   if(!el)continue;
+   const active=p.id===last.player;
+   el.classList.toggle("ractive",active);
+   el.style.left=(active&&last.x!==undefined?clamp(last.x,p.side==="home"?2:2,98):p.x)+"%";
+   el.style.top=(active&&last.y!==undefined?clamp(last.y,6,94):p.y)+"%";
+  }
  }
 }
 function rewind(){
