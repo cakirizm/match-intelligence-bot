@@ -604,10 +604,24 @@ function modelRates(home,away){
  };
  const baseHome=clamp(.58*blend(h,vh,"gf",priorHome)+.42*blend(a,va,"ga",priorHome),.3,3.6);
  const baseAway=clamp(.58*blend(a,va,"gf",priorAway)+.42*blend(h,vh,"ga",priorAway),.3,3.4);
+ // SIMULAB V6: sourced result strengths and low-score dependencies. The existing model stays as
+ // a conservative blend/fallback when a free provider lacks historical results.
+ const E=typeof window!=="undefined"?window.SIMULAB_ENGINE_V6:null;
+ const allHistorical=LEAGUES.flatMap(l=>Array.isArray(matches[l.id])?matches[l.id]:[]);
+ let modern=null;
+ if(E){try{
+  const fixtureDate=chosen?.date||dateToday();
+  modern=E.predict({leagueMatches:currentRows(),allMatches:allHistorical,home,away,date:fixtureDate,
+   xgRows:(window.SIMULAB_V6?.getXgRows?.()||[]).filter(m=>m.league===league)});
+ }catch(error){console.error("V6 model fallback",error)}}
+ const newBaseH=modern?clamp(.82*modern.home+.18*baseHome,.23,4.1):baseHome;
+ const newBaseA=modern?clamp(.82*modern.away+.18*baseAway,.20,3.9):baseAway;
+ const tac=E?E.tacticFactors(window.SIMULAB_V6?.getTactics?.()||{}):{home:0,away:0};
+ 
  const hc=currentContext(home),ac=currentContext(away),hl=lineupEffect(home),al=lineupEffect(away),hn=newsEffect(home),an=newsEffect(away);
  const restHome=scheduleRest(home,chosen?.date),restAway=scheduleRest(away,chosen?.date);
- const homeFactor=clamp(1+hc.factor+hl.attack-al.defense*.65+hn.effect+restHome.adjustment,.74,1.26);
- const awayFactor=clamp(1+ac.factor+al.attack-hl.defense*.65+an.effect+restAway.adjustment,.74,1.26);
+ const homeFactor=clamp(1+hc.factor+hl.attack-al.defense*.65+hn.effect+restHome.adjustment+tac.home,.74,1.26);
+ const awayFactor=clamp(1+ac.factor+al.attack-hl.defense*.65+an.effect+restAway.adjustment+tac.away,.74,1.26);
  const latest=past[0]?.date||"",age=latest?days(latest,dateToday()):999,issue=age>14?"Kaynak sonuçları "+age+" gündür güncel görünmüyor. ":"";
  const warnings=[issue,
   (h.n<5||a.n<5)?"DÜŞÜK GÜVEN: "+home+" "+h.n+" maç, "+away+" "+a.n+" maç; sınırlı veri genel maç gol ortalamalarıyla dengelendi. Gerçek kadro veya oyuncu performansı yerine geçmez. ":"",
@@ -616,10 +630,12 @@ function modelRates(home,away){
   hl.doubtful+al.doubtful>0?"Kullanıcının şüpheli işaretlediği "+(hl.doubtful+al.doubtful)+" oyuncuya düşük hazırlık etkisi uygulandı. ":"",
   hl.roleMismatch+al.roleMismatch>0?"Kaynak profil ile simülasyondaki rol arasında "+(hl.roleMismatch+al.roleMismatch)+" olası uyumsuzluk var; bu yalnızca genel mevki kontrolüdür. ":"",
   restHome.adjustment<0||restAway.adjustment<0?"Takvimden hesaplanan dinlenme günü senaryosu uygulandı; bu, futbolcunun gerçek fiziksel yorgunluk ölçümü değildir. ":"",
+  tac.home!==0||tac.away!==0?"Taktik tercihler küçük, henüz veriyle kalibre edilmemiş SENARYO varsayımlarıdır. ":"",
+  modern?.xgUsed?"İçe aktarılan kullanıcı xG kayıtlarının tarihsel ortalamaları kullanıldı; kaynak resmi doğrulanmadı. ":"",
   hl.csvStats+al.csvStats>0?"Kullanıcı scout istatistikleri kısmi bir ek sinyal olarak kullanıldı; doğrulama kullanıcıya aittir. ":"",
   hn.count||an.count?"Haber başlıkları doğrulanmış bilgi değildir. Adı kullanıcı ilk 11’iyle eşleşen oyuncu haberi ayrıca ağırlıklandırıldı ("+(hn.playerLinked+an.playerLinked)+" eşleşme). ":"",
   "Model geçmiş skorlarla kalibre edilmiş profesyonel tahmin sistemi değildir."].filter(Boolean);
- return {home:clamp(baseHome*homeFactor,.15,4.2),away:clamp(baseAway*awayFactor,.15,4.2),baseHome,baseAway,homeFactor,awayFactor,hl,al,hc,ac,hn,an,restHome,restAway,usedHome:h.n,usedAway:a.n,warnings};
+ return {home:clamp(newBaseH*homeFactor,.15,4.2),away:clamp(newBaseA*awayFactor,.15,4.2),baseHome:newBaseH,baseAway:newBaseA,legacyHome:baseHome,legacyAway:baseAway,homeFactor,awayFactor,hl,al,hc,ac,hn,an,restHome,restAway,usedHome:h.n,usedAway:a.n,rho:modern?.rho??0,v6:modern,tacticAssumptions:tac,warnings};
 }
 function samplePoisson(lambda){let sum=0,k=0,p=1,limit=Math.exp(-lambda);do{p*=Math.random();k++}while(p>limit&&k<16);return k-1}
 function detailsRow(parent,label,value){const line=node("div","mini-line");line.append(node("span",null,label),node("b",null,value));parent.append(line)}
@@ -639,7 +655,10 @@ function simulate(){
  let model;try{model=modelRates(home,away)}catch(e){notify("Simülasyon başlatılamadı: "+String(e.message||e),true);return}
  simulationReset();const myToken=runToken;
  const runCount=Math.max(1000,Math.min(10000,Number($("simulation-count")?.value)||1000));
+ const E=typeof window!=="undefined"?window.SIMULAB_ENGINE_V6:null;
+ const scoreGrid=E?.grid(model.home,model.away,model.rho);
  const trials=Array.from({length:runCount},()=>{
+  if(E&&scoreGrid)return E.sample(scoreGrid);
   const pace=clamp(.85+Math.random()*.30,.75,1.25);
   return [samplePoisson(model.home*pace),samplePoisson(model.away*pace)];
  });
@@ -677,6 +696,7 @@ function simulate(){
   if(n<runCount)setTimeout(tick,speed===1?110:speed===10?75:70);
   else{
    window.SIMULAB_V5?.afterSimulation?.({trials,home,away,model,counts,runCount,league,chosen});
+   window.SIMULAB_V6?.afterSimulation?.({trials,home,away,model,counts,runCount,league,chosen,scoreGrid});
    if(typeof window!=="undefined"&&window.SIMULAB_REPLAY?.onComplete){
    try{window.SIMULAB_REPLAY.onComplete({trials,home,away,model,chosen,runCount,league})}catch(e){console.error("Replay setup failed",e)}
    }
@@ -981,6 +1001,8 @@ if(typeof window!=="undefined"){
    }
    const ok=persist(LS.lineups,lineups);renderLineups();return ok;
   },
+  getLeagueMatches:id=>(Array.isArray(matches[id||league])?matches[id||league]:[]).filter(m=>Number.isInteger(m.hg)&&Number.isInteger(m.ag)).map(m=>({...m})),
+  getAllHistoricalMatches:()=>LEAGUES.flatMap(l=>(Array.isArray(matches[l.id])?matches[l.id]:[]).filter(m=>Number.isInteger(m.hg)&&Number.isInteger(m.ag)).map(m=>({...m,competition:l.id}))),
   getAllTeams:()=>LEAGUES.flatMap(l=>{
    const current=[...(matches[l.id]||[]).filter(m=>m.date>="2026-07-01"),
      ...(fixtures[l.id]||[]).filter(m=>m.date>="2026-07-01")];
