@@ -49,7 +49,7 @@ async function primary(l){
   if(!isoDate(date)||!home||!away||home===away||/^TBD\b/i.test(home)||/^TBD\b/i.test(away))continue;
   const one=numeric(m.HomeTeamScore),two=numeric(m.AwayTeamScore);
   const time=utc.slice(11,16),round=m.RoundNumber==null?null:String(m.RoundNumber);
-  const kickoffUtc=utc&&(/Z$/i.test(utc)?utc:utc.replace(" ","T")+"Z");
+  const kickoffUtc=utc?(utc.replace(" ","T").replace(/Z?$/i,"Z")):null;
   const base={date,time,home,away,round,kickoffUtc,source:"Fixture Download",matchId:String(m.MatchNumber||"")};
   if(date<=today&&one!==null&&two!==null)completed.push({...base,hg:one,ag:two});
   else upcoming.push(base);
