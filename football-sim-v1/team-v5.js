@@ -278,7 +278,7 @@ async function loadNews(){
 }
 function renderFull(){
  if(!selected)return;
- renderDirectory();renderTop();renderGames();renderRoster();reviewXI(true);
+ renderDirectory();renderTop();renderGames();renderRoster();reviewXI(true);renderChanges();
  if(activePlayer){const p=currentProfile()?.players?.find(x=>norm(x.name)===norm(activePlayer.name));if(p){activePlayer=p;showPlayer(p)}else activePlayer=null}
 }
 function scheduleSimulation(ms=400){
@@ -296,17 +296,34 @@ async function fetchTeam(name,league,opts={}){
  try{
   const data=await jsonGET("/api/team?league="+encodeURIComponent(league)+"&team="+encodeURIComponent(name),20500);
   if(data&&typeof data==="object"){
-   cache[key]=data;save(CACHE,cache);
-   if(Array.isArray(data.players)&&data.players.length)saveScout(data,name,league);
+   const oldList=Array.isArray(existing?.players)?existing.players:[];
+   const freshList=Array.isArray(data.players)?data.players:[];
+   let next=data;
+   if(oldList.length>=11&&freshList.length<11){
+     // A temporary provider outage or free-tier truncation must not erase a rich cached roster.
+     next={...existing,updatedAt:data.updatedAt,profile:data.profile||existing.profile,
+      sourceErrors:[...(data.sourceErrors||[]),"Yeni kaynak kısmi kayıt gönderdi; eski kaynaklı kadro korundu."],
+      staleRoster:true};
+   }else if(oldList.length>=11&&freshList.length>=11){
+     const prev=new Set(oldList.map(p=>norm(p.name))),newer=new Set(freshList.map(p=>norm(p.name)));
+     const added=freshList.filter(p=>!prev.has(norm(p.name))).map(p=>p.name).slice(0,20);
+     const removed=oldList.filter(p=>!newer.has(norm(p.name))).map(p=>p.name).slice(0,20);
+     next={...data,changes:{added,removed,checkedAt:data.updatedAt,
+      warning:"Liste farkı kaynak değişikliğidir; transfer, sakatlık veya sözleşme durumu olarak doğrulanmadı."}};
+   }else if(existing?.changes){
+     next={...data,changes:existing.changes};
+   }
+   cache[key]=next;save(CACHE,cache);
+   if(Array.isArray(next.players)&&next.players.length)saveScout(next,name,league);
    if(selected?.name===name&&selected?.league===league)renderFull();
    if(opts.autoXI){
     const current=API().getState();
     if(current.league!==league||(!sameTeam(current.home,name)&&!sameTeam(current.away,name)))return data;
     const currentXI=API().getLineup(name);
     const blank=currentXI.players.every(p=>!p.name);
-    if(blank&&data.automaticXIAllowed&&data.players?.length>=11){
+    if(blank&&next.automaticXIAllowed&&next.players?.length>=11){
      const shape=currentXI.formation||"4-3-3";
-     const lineup=candidates(data,shape);
+     const lineup=candidates(next,shape);
      if(lineup.length===11&&lineup.every(Boolean)){
       API().saveLineup(name,lineup.map(p=>p.name),shape);
       if(sameTeam(current.home,name)||sameTeam(current.away,name))scheduleSimulation(650);
@@ -314,7 +331,7 @@ async function fetchTeam(name,league,opts={}){
     }
    }
   }
-  return data;
+  return cache[key];
  }catch(e){
   if(selected?.name===name&&selected?.league===league){
    $("team-profile-source").textContent="Kaynaklara ulaşılamadı: "+(e.message||e)+". Önceki bilgiler korunur.";
@@ -334,12 +351,64 @@ function detectCurrent(){
  if(desired&&(!selected||selected.league!==league||!sameTeam(selected.name,desired)))selectTeam(desired,league);
  else renderDirectory();
 }
+
+function renderChanges(){
+ const box=$("team-profile-alerts");if(!box||!selected)return;
+ box.replaceChildren();
+ const current=currentProfile(),changes=current?.changes;
+ const panel=node("div","team-change-log");
+ panel.append(node("strong",null,"Kadrodaki kaynak güncellemeleri"));
+ if(!changes){panel.append(node("p",null,"İlk kayıttan sonraki güncellemede eklenen ve listeden çıkan isimler burada karşılaştırılır. Bu kayıt transfer veya sakatlık doğrulaması değildir."))}
+ else{
+  const label=changes.checkedAt?new Date(changes.checkedAt).toLocaleString("tr-TR"):"tarih bilinmiyor";
+  panel.append(node("p",null,"Kaynak karşılaştırması: "+label));
+  panel.append(node("p",null,"Yeni görülen isimler: "+(changes.added?.length?changes.added.join(", "):"yok")));
+  panel.append(node("p",null,"Artık görünmeyen isimler: "+(changes.removed?.length?changes.removed.join(", "):"yok")));
+  panel.append(node("p",null,changes.warning||"Bu yalnızca iki kaynak liste arasındaki farktır."));
+ }
+ if(current?.staleRoster)panel.append(node("p",null,"⚠ Son yeni kaynak eksik döndü; önceki kadro saklandı."));
+ if(current?.rosterUrl){
+  const link=trusted(current.rosterUrl,["en.wikipedia.org"]);
+  if(link){const a=node("a",null,"Orijinal açık lisanslı kadro sayfası ↗");a.href=link;a.target="_blank";a.rel="noopener noreferrer";panel.append(a)}
+ }
+ box.append(panel);
+}
+let matchXIToken=0;
+async function checkMatchXI(){
+ const st=API().getState(),match=st.chosen,token=++matchXIToken;
+ const label=$("match-source-xi");if(!label)return;
+ if(!match?.date||!st.home||!st.away){label.textContent="Fikstürden maç seçildiğinde ücretsiz kadro kaynağı kontrol edilir.";return}
+ label.textContent="Maç tarihi ve iki takımla ücretsiz kadro kaynağı eşleştiriliyor...";
+ try{
+  const url="/api/lineup?"+new URLSearchParams({home:st.home,away:st.away,date:match.date,id:String(match.eventId||"")}).toString();
+  const data=await jsonGET(url,14000);
+  if(token!==matchXIToken)return;
+  const now=API().getState();
+  if(now.home!==st.home||now.away!==st.away||now.chosen?.date!==st.chosen?.date)return;
+  label.textContent=data.message||"Kaynak kadro sonucu bulunamadı.";
+  if(!data.matchedEvent||!data.complete)return;
+  // Source supplies 11 per team: only fill empty scenario XIs; never overwrite manually entered XIs.
+  let applied=0;
+  for(const [side,team] of [["home",st.home],["away",st.away]]){
+   const ownXI=API().getLineup(team);
+   if(ownXI.players.some(p=>p.name))continue;
+   const names=data.players?.[side]?.map(p=>p.name).filter(Boolean)||[];
+   if(names.length===11){API().saveLineup(team,names);applied++}
+  }
+  if(applied){
+   label.textContent+=" "+applied+" boş simülasyon kadrosu kaynak oyuncularıyla tamamlandı. Bağımsız resmî kadro teyidi yapılmadı.";
+   scheduleSimulation(400);
+  }
+ }catch(e){if(token===matchXIToken)label.textContent="Ücretsiz maç ilk 11'i kontrol edilemedi: "+(e.message||e)}
+}
+
 function onMatchSelected(match){
  if(!match)return;
  const current=API().getState();
  // Best effort: fetch both team profiles and auto-fill XI only if user XI is empty.
  fetchTeam(current.home,current.league,{autoXI:true});
  fetchTeam(current.away,current.league,{autoXI:true});
+ checkMatchXI();
  if($("page-team").classList.contains("selected"))selectTeam(current.home,current.league);
 }
 function onTeamsChanged(){
@@ -407,6 +476,7 @@ function setup(){
  $("team-xi-create").addEventListener("click",()=>reviewXI(true));
  $("team-xi-apply").addEventListener("click",()=>applyXI(false));
  $("team-news-refresh").addEventListener("click",loadNews);
+ $("match-xi-refresh")?.addEventListener("click",checkMatchXI);
  document.querySelector('[data-tab="team"]')?.addEventListener("click",()=>{detectCurrent()});
  document.addEventListener("click",e=>{
   if(e.target.closest?.(".league")||e.target.closest?.(".fixture-item")||e.target.closest?.("#global-fixtures")){
