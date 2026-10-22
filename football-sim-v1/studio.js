@@ -981,7 +981,13 @@ if(typeof window!=="undefined"){
    }
    const ok=persist(LS.lineups,lineups);renderLineups();return ok;
   },
-  getAllTeams:()=>LEAGUES.flatMap(l=>[...new Set([...(matches[l.id]||[]).flatMap(m=>[m.home,m.away]),...(fixtures[l.id]||[]).flatMap(m=>[m.home,m.away])])].filter(Boolean).map(name=>({league:l.id,leagueName:l.name,name}))),
+  getAllTeams:()=>LEAGUES.flatMap(l=>{
+   const current=[...(matches[l.id]||[]).filter(m=>m.date>="2026-07-01"),
+     ...(fixtures[l.id]||[]).filter(m=>m.date>="2026-07-01")];
+   const recent=[...(matches[l.id]||[]).filter(m=>m.date>="2025-07-01")];
+   const entries=current.length?current:recent.length?recent:(matches[l.id]||[]);
+   return [...new Set(entries.flatMap(m=>[m.home,m.away]))].filter(Boolean).map(name=>({league:l.id,leagueName:l.name,name}));
+  }),
   getTeamMatches:(name,id)=>{const k=id||league;const rows=[...(matches[k]||[]).map(m=>({...m,isResult:true})),...(fixtures[k]||[]).map(m=>({...m,isResult:false}))];return rows.filter(m=>similarTeam(m.home,name)||similarTeam(m.away,name)).sort((a,b)=>a.date.localeCompare(b.date));},
   getTeamForm:(name,id)=>{const rows=(matches[id||league]||[]).filter(m=>(similarTeam(m.home,name)||similarTeam(m.away,name))&&Number.isInteger(m.hg)&&Number.isInteger(m.ag));const last=rows.sort((a,b)=>b.date.localeCompare(a.date)).slice(0,10);return last.map(m=>({date:m.date,scored:similarTeam(m.home,name)?m.hg:m.ag,conceded:similarTeam(m.home,name)?m.ag:m.hg,opponent:similarTeam(m.home,name)?m.away:m.home}))},
   selectFixture:(m,id)=>{if(id&&id!==league)setLeague(id);chooseFixture(m)},
