@@ -8,7 +8,8 @@ const LEAGUES=[
   {id:"esp",short:"es",api:"PD",flag:"🇪🇸",name:"La Liga"},
   {id:"ger",short:"de",api:"BL1",flag:"🇩🇪",name:"Bundesliga"},
   {id:"ita",short:"it",api:"SA",flag:"🇮🇹",name:"Serie A"},
-  {id:"fra",short:"fr",api:"FL1",flag:"🇫🇷",name:"Ligue 1"}
+  {id:"fra",short:"fr",api:"FL1",flag:"🇫🇷",name:"Ligue 1"},
+  {id:"ucl",short:null,api:"CL",flag:"🏆",name:"Şampiyonlar Ligi"}
 ];
 const SEASONS=["2026-27","2025-26","2024-25","2023-24","2022-23"];
 const LS={matches:"simulab-v1",fixtures:"simulab-fixtures-v1",meta:"simulab-metadata-v1",lineups:"simulab-v2-lineups",context:"simulab-v2-context",approvals:"simulab-v2-news-approvals"};
@@ -87,7 +88,7 @@ function syncBanner(){
  text($("total-games"),count.toLocaleString("tr-TR"));
  text($("status-top"),m?.updatedAt?"Kontrol: "+new Date(m.updatedAt).toLocaleDateString("tr-TR"):"Henüz kontrol edilmedi");
  if(!latest){
-  notify(leagueObj().name+" için gerçek skor bulunmuyor. Sağ üstten Verileri Güncelle seçeneğini kullanın.",true);
+  notify(league==="ucl"?"🏆 Şampiyonlar Ligi maçlarını getirmek için ücretsiz football-data.org API anahtarını Vercel'e ekle, sonra ‘Verileri Güncelle → Ücretsiz API’den son sonuçları getir’ de.":"Bu ligde tamamlanmış skor yok. Sağ üstten Verileri Güncelle seçeneğini kullanın.",true);
   text($("data-summary"),"Bu lig için tamamlanmış sonuç yok.");
   return;
  }
@@ -154,13 +155,20 @@ function renderFixtures(){
 function playedBefore(date){
  return currentRows().filter(m=>!date||m.date<date).sort((a,b)=>b.date.localeCompare(a.date));
 }
+function similarTeam(a,b){return normalized(a)===normalized(b) && !!normalized(a)}
+function analysisRows(date){
+ if(league!=="ucl")return playedBefore(date);
+ const all=[...currentRows(),...LEAGUES.filter(l=>l.id!=="ucl").flatMap(l=>Array.isArray(matches[l.id])?matches[l.id]:[])];
+ const until=date||dateToday();
+ return all.filter(m=>m&&isDate(m.date)&&m.date<until&&Number.isInteger(m.hg)&&Number.isInteger(m.ag)).sort((a,b)=>b.date.localeCompare(a.date));
+}
 function teamLast(team,max=5,date){
- return playedBefore(date).filter(m=>m.home===team||m.away===team).slice(0,max);
+ return analysisRows(date).filter(m=>similarTeam(m.home,team)||similarTeam(m.away,team)).slice(0,max);
 }
 function teamForm(team,date){
  const last=teamLast(team,5,date),out={w:0,d:0,l:0,gf:0,ga:0,n:last.length,lastDate:last[0]?.date||null};
  for(const m of last){
-  const home=m.home===team,scored=home?m.hg:m.ag,against=home?m.ag:m.hg;
+  const home=similarTeam(m.home,team),scored=home?m.hg:m.ag,against=home?m.ag:m.hg;
   out.gf+=scored;out.ga+=against;if(scored>against)out.w++;else if(scored===against)out.d++;else out.l++;
  }
  return out;
@@ -350,10 +358,10 @@ function currentContext(team){
  return {factor:clamp(morale+pressure+fatigue,-.17,.17),morale,pressure,fatigue};
 }
 function weightedStats(dataset,team,mode){
- const records=dataset.filter(m=>m.home===team||m.away===team).slice(0,48);
+ const records=dataset.filter(m=>similarTeam(m.home,team)||similarTeam(m.away,team)).slice(0,48);
  let scored=0,conceded=0,weight=0,used=0;
  records.forEach((m,i)=>{
-  const atHome=m.home===team;
+  const atHome=similarTeam(m.home,team);
   if(mode==="home"&&!atHome||mode==="away"&&atHome)return;
   const w=Math.exp(-i/21);
   scored+=(atHome?m.hg:m.ag)*w;conceded+=(atHome?m.ag:m.hg)*w;weight+=w;used++;
@@ -361,7 +369,7 @@ function weightedStats(dataset,team,mode){
  return {gf:weight?scored/weight:null,ga:weight?conceded/weight:null,n:used};
 }
 function modelRates(home,away){
- const past=playedBefore(chosen?.date),h=weightedStats(past,home,"all"),a=weightedStats(past,away,"all");
+ const past=analysisRows(chosen?.date),h=weightedStats(past,home,"all"),a=weightedStats(past,away,"all");
  if(h.n<5||a.n<5)throw Error("İki takımın da en az 5 geçmiş tamamlanmış maç kaydı bulunmalı.");
  const vh=weightedStats(past,home,"home"),va=weightedStats(past,away,"away");
  const blend=(overall,venue,key,fallback)=>venue.n>=3?.65*venue[key]+.35*(overall[key]??fallback):overall[key]??fallback;
@@ -478,6 +486,8 @@ async function openFootballFile(l,season){
 }
 function refreshCurrent(){renderLeagues();const h=$("team-home").value,a=$("team-away").value;makeOpts($("team-home"),teams(),h);makeOpts($("team-away"),teams(),a);syncBanner();renderFixtures();updateSelectedUI()}
 async function syncOpenFootball(ids){
+ const needUcl=ids.includes("ucl");ids=ids.filter(id=>id!=="ucl");
+ if(needUcl&&!ids.length){await syncApi(["ucl"]);return}
  if(syncing)return;syncing=true;
  const buttons=[$("sync-current"),$("sync-all"),$("sync-live")];buttons.forEach(b=>b.disabled=true);
  const status=$("sync-message");text(status,"Kaynak bağlantısı kuruluyor...");
@@ -500,13 +510,14 @@ async function syncOpenFootball(ids){
  persist(LS.matches,matches);persist(LS.fixtures,fixtures);persist(LS.meta,metadata);refreshCurrent();
  text(status,ok+"/"+ids.length+" lig güncellendi. "+outcomes.map(x=>LEAGUES.find(l=>l.id===x.id).name+": "+(x.ok?x.count+" sonuç":"HATA "+x.reason)).join(" | "));
  buttons.forEach(b=>b.disabled=false);syncing=false;
+ if(needUcl)await syncApi(["ucl"]);
 }
-async function syncApi(){
+async function syncApi(ids=LEAGUES.map(l=>l.id)){
  if(syncing)return;syncing=true;
  const btns=[$("sync-current"),$("sync-all"),$("sync-live")];btns.forEach(b=>b.disabled=true);
  const status=$("sync-message");text(status,"Ücretsiz güncel API kontrol ediliyor...");
  let success=0,failed=[];
- for(const l of LEAGUES){
+ for(const l of LEAGUES.filter(l=>ids.includes(l.id))){
   try{
    const data=await fetchJson("/api/matches?league="+l.id,18000);
    let raw=Array.isArray(matches[l.id])?matches[l.id]:[];
@@ -594,7 +605,7 @@ function connectEvents(){
 }
 function init(){
  connectEvents();setLeague("eng");setTab("match");simulationReset();
- if(LEAGUES.every(l=>!matches[l.id]?.length)){notify("İlk açılış: beş ligin ücretsiz maç arşivi indiriliyor.");syncOpenFootball(LEAGUES.map(l=>l.id))}
+ if(LEAGUES.filter(l=>l.id!=="ucl").every(l=>!matches[l.id]?.length)){notify("İlk açılış: beş ligin ücretsiz maç arşivi indiriliyor.");syncOpenFootball(LEAGUES.filter(l=>l.id!=="ucl").map(l=>l.id))}
 }
 init();
 })();
