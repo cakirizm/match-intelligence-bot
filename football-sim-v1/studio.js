@@ -303,7 +303,7 @@ function renderFixtures(){
   const content=node("span","fixture-team-cell");
   content.append(node("span","fixture-teams",m.home+"  —  "+m.away));
   const rawSource=String(m.source||m.provider||"");
-  const source=rawSource.includes("ESPN")?"WEB SKOR AKIŞI":rawSource.includes("football-data")?"FUTBOL API":rawSource.includes("OpenFootball")?"AÇIK ARŞİV":"YEREL VERİ";
+  const source=rawSource.includes("OpenLigaDB")?"AÇIK LİG VERİSİ":rawSource.includes("TheSportsDB")?"ÜCRETSİZ API":rawSource.includes("OpenFootball")?"CC0 AÇIK VERİ":rawSource.includes("CSV")?"MANUEL CSV":"KAYITLI VERİ";
   content.append(node("small","fixture-provider",source));
   const score=node("span","fixture-score",m.isResult?m.hg+" : "+m.ag:"SİMÜLE ↗");
   b.append(date,content,score);
@@ -869,8 +869,8 @@ async function checkApi(){
  text($("api-status-text"),"Anahtarsız ücretsiz veri akışı kontrol ediliyor...");
  try{
   const response=await fetchJson("/api/fixtures?league="+league,18000);
-  text($("api-status-text"),"Ücretsiz akış erişilebilir: "+(response.complete?.length||0)+" tamamlanmış ve "+(response.upcoming?.length||0)+" planlanan maç ("+fmtDate(response.coverageFrom)+" – "+fmtDate(response.coverageTo)+"). Kaynak resmî API olmadığı için veri ve erişim garantisi yoktur.");
- }catch(e){text($("api-status-text"),"Şu anda anahtarsız akış erişilemiyor: "+String(e.message||e)+". Mevcut arşiv korunacak.")}
+  text($("api-status-text"),"Anahtarsız kaynak çalışıyor ("+response.provider+"): "+(response.completed?.length||0)+" tamamlanmış, "+(response.upcoming?.length||0)+" fikstür kaydı. Kaynak verileri gecikebilir ve ücretsiz planlar kısıtlı olabilir.");
+ }catch(e){text($("api-status-text"),"Ücretsiz veri akışı şu anda erişilemiyor: "+String(e.message||e)+". Mevcut açık arşiv ve tarayıcı verileri korunur.")}
 }
 function connectEvents(){
  for(const b of document.querySelectorAll("#tabs [data-tab]"))b.addEventListener("click",()=>setTab(b.dataset.tab));
