@@ -938,6 +938,14 @@ if(typeof window!=="undefined"){
     awayXI:away?JSON.parse(JSON.stringify(lineupFor(away))):null,
     results:currentRows().slice(-60),fixtures:upcoming().slice(0,60)};
   },
+  setMatchSide:(side,team,id)=>{
+    if(id&&id!==league)setLeague(id);
+    if(!["home","away"].includes(side)||!teams().includes(team))return false;
+    const el=$(side==="home"?"team-home":"team-away"),other=$(side==="home"?"team-away":"team-home");
+    if(other.value===team){const fallback=teams().find(t=>t!==team);if(fallback)other.value=fallback}
+    el.value=team;chosen=null;runToken++;newsToken++;newsCache={};
+    updateSelectedUI();simulationReset();renderFixtures();return true;
+  },
   getLineup:team=>JSON.parse(JSON.stringify(lineupFor(team))),
   saveLineup:(team,newNames,formation)=>{
    if(!team||!Array.isArray(newNames))return false;
@@ -955,7 +963,7 @@ if(typeof window!=="undefined"){
   },
   getAllTeams:()=>LEAGUES.flatMap(l=>[...new Set([...(matches[l.id]||[]).flatMap(m=>[m.home,m.away]),...(fixtures[l.id]||[]).flatMap(m=>[m.home,m.away])])].filter(Boolean).map(name=>({league:l.id,leagueName:l.name,name}))),
   getTeamMatches:(name,id)=>{const k=id||league;const rows=[...(matches[k]||[]).map(m=>({...m,isResult:true})),...(fixtures[k]||[]).map(m=>({...m,isResult:false}))];return rows.filter(m=>similarTeam(m.home,name)||similarTeam(m.away,name)).sort((a,b)=>a.date.localeCompare(b.date));},
-  getTeamForm:(name,id)=>{const rows=(matches[id||league]||[]).filter(m=>similarTeam(m.home,name)||similarTeam(m.away,name)&&Number.isInteger(m.hg));const last=rows.sort((a,b)=>b.date.localeCompare(a.date)).slice(0,10);return last.map(m=>({date:m.date,scored:similarTeam(m.home,name)?m.hg:m.ag,conceded:similarTeam(m.home,name)?m.ag:m.hg,opponent:similarTeam(m.home,name)?m.away:m.home}))},
+  getTeamForm:(name,id)=>{const rows=(matches[id||league]||[]).filter(m=>(similarTeam(m.home,name)||similarTeam(m.away,name))&&Number.isInteger(m.hg)&&Number.isInteger(m.ag));const last=rows.sort((a,b)=>b.date.localeCompare(a.date)).slice(0,10);return last.map(m=>({date:m.date,scored:similarTeam(m.home,name)?m.hg:m.ag,conceded:similarTeam(m.home,name)?m.ag:m.hg,opponent:similarTeam(m.home,name)?m.away:m.home}))},
   selectFixture:(m,id)=>{if(id&&id!==league)setLeague(id);chooseFixture(m)},
   selectLeague:(id)=>setLeague(id),
   openTab:(name)=>setTab(name),
