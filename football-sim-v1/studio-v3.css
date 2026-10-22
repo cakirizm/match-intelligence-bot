@@ -119,3 +119,102 @@
 .fixture-filters button{white-space:nowrap;min-width:65px;font-size:10px;padding:9px 7px}
 @media(max-width:1180px){.global-fixture-list{grid-template-columns:repeat(2,minmax(0,1fr))}.global-fixture-toolbar{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:720px){.quick-fixtures-board{padding:13px 11px;margin:12px 0}.quick-fixtures-head{align-items:flex-start}.quick-fixtures-head .btn{max-width:120px;font-size:10px;padding:9px}.global-fixture-list{grid-template-columns:1fr;max-height:540px}.global-fixture-match{min-height:88px}.global-fixture-toolbar{gap:8px}.global-fixture-toolbar label{font-size:9px}.global-fixture-toolbar input,.global-fixture-toolbar select{font-size:11px}.gfm-row{gap:6px}}
+
+/* SIMULAB V5 — Football-manager inspired team directory & scout cards */
+.tabs{overflow-x:auto;scrollbar-width:thin}
+.team-station{display:grid;grid-template-columns:230px minmax(0,1fr);gap:14px;align-items:start;margin-bottom:24px}
+.team-sidebar{position:sticky;top:14px;padding:14px}
+.team-sidebar-head{display:flex;justify-content:space-between;align-items:center;gap:6px}
+.team-sidebar-head h3{font-size:15px;margin:0}
+.team-sidebar-head span{font-size:10px;color:var(--mint)}
+.team-small-label{font-size:10px;letter-spacing:1px;font-weight:800;color:#a8c9cf;display:block;margin:14px 0 6px}
+.team-sidebar select,.team-sidebar input,.team-profile-roster+.team-input{width:100%;font-size:12px;padding:11px}
+.team-sidebar input{margin:9px 0}
+.team-directory{max-height:640px;overflow-y:auto;display:grid;gap:4px}
+.team-directory button{color:#e5f3f6;background:#0a2030;border:1px solid transparent;text-align:left;padding:11px;border-radius:9px;font-size:11px;display:flex;justify-content:space-between;gap:5px}
+.team-directory button:hover,.team-directory button.selected{border-color:#579d98;background:#173f43}
+.team-directory small{font-size:9px;color:#87a6b4}
+.team-main{min-width:0;display:grid;gap:14px}
+.team-profile-panel{padding:19px}
+.team-identity{display:flex;align-items:center;gap:13px}
+.team-identity-symbol{width:56px;height:56px;border:1px solid #426671;background:#0c2633;border-radius:13px;display:grid;place-items:center;font-size:25px;flex-shrink:0;overflow:hidden}
+.team-identity-symbol img{height:46px;width:46px;object-fit:contain}
+.team-identity-copy{min-width:0;flex:1}
+.team-identity-copy h2{font-size:23px;margin:4px 0;letter-spacing:-.5px}
+.team-identity-copy p{color:#b7ced7;font-size:11px;margin:4px 0;line-height:1.5}
+.team-identity .btn{flex-shrink:0;white-space:normal;max-width:160px}
+.team-source-line{margin-top:15px;font-size:11px;color:#9dbbc9;line-height:1.6}
+.team-source-line a{color:var(--mint)}
+.team-kpi-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin-top:15px}
+.team-kpi{background:#0d2331;border:1px solid #315162;border-radius:10px;padding:10px}
+.team-kpi b{font-size:19px;color:#e4f8fb;display:block}
+.team-kpi span{font-size:10px;color:#98b1bc}
+.team-two-col{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.team-two-col .panel{min-width:0}
+.team-help{font-size:11px;line-height:1.6;color:#a6c2c8;margin:10px 0}
+.team-xi-controls{display:flex;flex-wrap:wrap;gap:7px;margin:10px 0}
+.team-xi-controls select{padding:8px;width:auto;max-width:135px}
+.team-xi-controls .btn{padding:9px;font-size:10px}
+.team-xi-roster{display:grid;gap:5px}
+.team-xi-row{display:grid;grid-template-columns:24px 33px minmax(0,1fr);gap:7px;align-items:center;background:#0b1c2b;padding:7px 8px;border:1px solid #2d4456;border-radius:7px;font-size:11px}
+.team-xi-row small{color:#93a9b9}
+.team-xi-row .pos{color:#71d3c7;font-weight:900;font-size:10px}
+.team-xi-row.absent{border-color:#ac6172;background:#372331}
+.team-formline{display:flex;gap:5px;flex-wrap:wrap;margin:10px 0}
+.team-formline b{width:28px;height:28px;border-radius:7px;display:grid;place-items:center;font-size:10px}
+.team-formline b.win{color:#8be1b9;background:#155144}
+.team-formline b.loss{color:#ffbabc;background:#57313c}
+.team-formline b.draw{color:#d7dde5;background:#374654}
+.team-recent-games{display:grid;gap:5px;max-height:340px;overflow-y:auto}
+.team-game{width:100%;background:#0b1e2e;border:1px solid #294456;padding:9px 10px;border-radius:8px;display:grid;grid-template-columns:72px minmax(0,1fr) 48px;align-items:center;gap:7px;text-align:left;color:#e2f1f3}
+.team-game:hover{border-color:#6bb5ae}
+.team-game small{font-size:9px;color:#9db9c3}
+.team-game strong{font-size:11px;text-overflow:ellipsis;overflow:hidden;white-space:nowrap}
+.team-game .score{text-align:right;font-size:11px;color:var(--mint)}
+#team-roster-search{width:100%;margin:5px 0 8px;padding:10px}
+.team-position-filters{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:9px}
+.team-position-filters button{font-size:10px;color:#bcd0d7;background:#112738;border:1px solid #2a4755;padding:5px 7px;border-radius:7px}
+.team-position-filters button.active{background:#205a4f;border-color:#68b99e;color:white}
+.team-profile-roster{max-height:440px;overflow-y:auto;display:grid;gap:5px}
+.team-player-card{background:#0b1e2d;border:1px solid #2a4355;border-radius:9px;padding:8px;display:grid;grid-template-columns:28px minmax(0,1fr) auto;align-items:center;gap:8px;text-align:left;color:#ecf6f8}
+.team-player-card.selected,.team-player-card:hover{border-color:var(--mint);background:#193b3d}
+.team-player-card .shirt{display:grid;place-items:center;border-radius:6px;background:#1c3d4c;padding:6px 0;font-size:11px;font-weight:900;color:#9fe0dc}
+.team-player-card strong{font-size:11px;display:block;line-height:1.4}
+.team-player-card small{color:#a1b5bf;font-size:9px}
+.team-player-card .status-pill{font-size:9px}
+.team-player-card .status-pill.out{color:#ffb3c4}.team-player-card .status-pill.doubt{color:#ffd18c}
+#team-player-detail{font-size:12px;line-height:1.55;min-height:220px}
+.player-detail-identity{display:flex;align-items:center;gap:12px;margin-bottom:15px}
+.player-detail-identity img{width:74px;height:74px;object-fit:cover;border:1px solid #507585;border-radius:12px;background:#193240}
+.player-detail-identity h3{margin:0 0 4px;font-size:17px}
+.player-detail-identity small{color:#a5c8c4}
+.team-field-row{display:flex;justify-content:space-between;gap:10px;border-bottom:1px solid #294351;padding:8px 0;font-size:11px}
+.team-field-row b{text-align:right;color:#e8fafb}
+.player-status-select{width:100%;padding:10px;font-size:12px;margin:9px 0}
+.team-profile-news{display:grid;gap:8px}
+.team-news-card{padding:11px;border:1px solid #335363;background:#0b2233;border-radius:9px}
+.team-news-card a{font-size:12px;color:#d9f7ed;text-decoration:none}
+.team-news-card small{display:block;font-size:10px;color:#99b4c3;margin-top:7px}
+.team-profile-alerts{font-size:11px;color:#a9ccd0;margin-top:10px}
+.v5-run-explain{font-size:11px;line-height:1.65;background:#0d2835;border:1px solid #3c6d70;color:#d3eaeb;padding:13px;border-radius:11px;margin-top:12px}
+.v5-run-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:10px 0}
+.v5-run-grid>div{background:#112f3e;border-radius:9px;padding:10px}
+.v5-run-grid b{font-size:15px;display:block;color:#e8fcf9}
+.v5-run-grid span{font-size:9px;color:#a4c9c6}
+.v5-insight-list{list-style:none;padding:0;margin:9px 0;display:grid;gap:6px;font-size:11px}
+.v5-insight-list li{padding-left:12px;border-left:2px solid #539d95}
+.v5-status{font-size:10px;color:#bdd4d6}
+@media(max-width:1100px){.team-station{grid-template-columns:180px minmax(0,1fr)}.team-two-col{grid-template-columns:1fr}}
+@media(max-width:730px){
+.team-station{grid-template-columns:1fr}
+.team-sidebar{position:relative;top:auto;padding:13px}
+.team-directory{max-height:130px;display:flex;overflow-x:auto;overflow-y:hidden;gap:6px;padding-bottom:8px}
+.team-directory button{flex:0 0 160px;min-width:160px}
+.team-identity{flex-wrap:wrap}
+.team-identity-copy h2{font-size:20px}
+.team-profile-panel{padding:13px}
+.team-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+.team-xi-controls{display:grid;grid-template-columns:1fr 1fr}
+.team-xi-controls select{max-width:none}
+.v5-run-grid{grid-template-columns:1fr 1fr}
+}
