@@ -7,10 +7,10 @@
 <div class="app">
 <header class="topbar">
  <a href="./" class="logo" aria-label="SIMULAB ana sayfa"><span class="logo-icon">S<span class="logo-dot">●</span></span><span>SIMU<b>LAB</b><small>FOOTBALL INTELLIGENCE</small></span></a>
- <div class="top-actions"><span class="tag"><span class="live-dot"></span> V3 · SCOUT & MATCH LAB</span><button class="btn primary" id="open-sync">↻ Verileri Güncelle</button></div>
+ <div class="top-actions"><span class="tag"><span class="live-dot"></span> V5 · TEAM & MATCH INTELLIGENCE</span><button class="btn primary" id="open-sync">↻ Verileri Güncelle</button></div>
 </header>
 <section class="hero">
- <div><span class="eyebrow">MATCH INTELLIGENCE PLATFORM / V2</span><h1>Maç başlamadan <em>bin ihtimali</em> gör.</h1><p>Beş büyük lig + Şampiyonlar Ligi. Güncel fikstür, oyuncu keşfi, ilk 11 fotoğraf aktarımı, saha üzeri temsilî maç anlatımı ve 1.000–10.000 simülasyon.</p></div>
+ <div><span class="eyebrow">MATCH INTELLIGENCE PLATFORM / V5</span><h1>Maç başlamadan <em>bin ihtimali</em> gör.</h1><p>Beş büyük lig + Şampiyonlar Ligi. Güncel fikstür, oyuncu keşfi, ilk 11 fotoğraf aktarımı, saha üzeri temsilî maç anlatımı ve 1.000–10.000 simülasyon.</p></div>
  <div class="hero-score"><strong id="total-games">—</strong><span>KAYITLI TAMAMLANMIŞ MAÇ</span><small id="status-top">Kaynaklar kontrol bekliyor</small></div>
 </section>
 <section class="leaguebar" id="leagues" aria-label="Lig seçimi"></section>
@@ -31,6 +31,7 @@
 <div class="banner" id="source-banner" role="status">Verileriniz tarayıcıda okunuyor...</div>
 <nav class="tabs" id="tabs">
  <button data-tab="match" class="selected">◈ Maç Merkezi</button>
+ <button data-tab="team">◉ Takım Profilleri</button>
  <button data-tab="lineup">♙ Scout & İlk 11</button>
  <button data-tab="news">◉ Haber & Psikoloji</button>
  <button data-tab="method">▤ Veri & Model</button>
@@ -56,9 +57,65 @@
  <div class="outcome"><div class="outcome-track"><span id="bar-home"></span><span id="bar-draw"></span><span id="bar-away"></span></div><div class="outcome-grid"><div><strong id="win-home">—</strong><small>Ev sahibi kazanır</small></div><div><strong id="win-draw">—</strong><small>Beraberlik</small></div><div><strong id="win-away">—</strong><small>Deplasman kazanır</small></div></div></div>
  <div class="analytics"><div class="mini"><h3>En sık skorlar</h3><div id="score-modes" class="placeholder">Simülasyon bekleniyor</div></div><div class="mini"><h3>Maç senaryoları</h3><div id="scenarios" class="placeholder">Simülasyon bekleniyor</div></div></div>
  <div class="impact" id="impact-box">Haber, ilk 11 ve psikolojik göstergelerin etkisi simülasyonda burada gösterilecek.</div>
+ <div class="v5-run-explain" id="v5-run-explain">Maçı simüle ettiğinde, skorun arkasındaki takım formu, ilk 11 ve senaryo etkileri burada tek bir açıklamada birleştirilecek.</div>
  </article>
  <article class="panel replay-panel" id="replay-panel"><div class="panel-head"><div><small class="eyebrow">04 / TEMSİLÎ MAÇ ANLATIMI</small><h2>FM tarzı maç tekrarı</h2></div><span class="chip">SİMÜLE OLAYLAR</span></div><div id="replay-root"><p class="placeholder">Önce bir eşleşmeyi simüle et; ardından en sık görülen skor senaryolarından birinin oyuncu bazlı temsilî akışını izleyebilirsin.</p></div></article>
  </div></div>
+</section>
+<section class="tabpage" id="page-team">
+ <div class="section-intro"><small class="eyebrow">SIMULAB V5 / SCOUTING STATION</small><h2>Takımın her detayına gir.</h2><p>Altı turnuvanın takım profilleri, son form, fikstür, kaynaklı kadro, oyuncu profili ve maça göre oluşan kadro senaryosu tek bir yerde.</p></div>
+ <div class="team-station">
+  <aside class="panel team-sidebar">
+   <div class="team-sidebar-head"><h3>Tüm takımlar</h3><span id="team-directory-count">—</span></div>
+   <label class="team-small-label" for="team-directory-league">TURNUVA</label><select id="team-directory-league"><option value="all">Tüm 6 turnuva</option><option value="eng">🇬🇧 Premier League</option><option value="esp">🇪🇸 La Liga</option><option value="ger">🇩🇪 Bundesliga</option><option value="ita">🇮🇹 Serie A</option><option value="fra">🇫🇷 Ligue 1</option><option value="ucl">🏆 Şampiyonlar Ligi</option></select>
+   <input id="team-directory-search" type="search" placeholder="Takım adı ara..." aria-label="Takım ara">
+   <div id="team-directory" class="team-directory"><p class="placeholder">Takımlar aranıyor...</p></div>
+  </aside>
+  <div class="team-main">
+   <article class="panel team-profile-panel">
+    <div class="team-identity">
+     <div class="team-identity-symbol" id="team-profile-icon">⚽</div>
+     <div class="team-identity-copy"><small class="eyebrow" id="team-profile-league">TAKIM PROFİLİ</small><h2 id="team-profile-name">Bir takım seç</h2><p id="team-profile-details">Gerçek kadro için açık kaynaklar taranacak.</p></div>
+     <button id="team-profile-refresh" class="btn primary">↻ Profili Güncelle</button>
+    </div>
+    <p class="team-source-line" id="team-profile-source">Kaynak kontrol edilmedi. Tam kadro ve resmî ilk 11 birbirinden ayrıdır.</p>
+    <div class="team-kpi-grid" id="team-profile-kpis"></div>
+   </article>
+   <div class="team-two-col">
+    <article class="panel">
+     <div class="panel-head"><div><small class="eyebrow">SAHADAKİ GÖRÜNÜM</small><h2>Muhtemel ilk 11 taslağı</h2></div><span class="chip" id="team-xi-label">Resmî değil</span></div>
+     <p class="team-help">Oyuncular sadece kaynakta varsa otomatik seçilir. **Diziliş önerisi**, son maçın açıklanmış ilk 11'i değildir.</p>
+     <div class="team-xi-controls"><select id="team-xi-formation" aria-label="Diziliş"><option>4-3-3</option><option>4-2-3-1</option><option>4-4-2</option><option>3-5-2</option></select><button class="btn outline" id="team-xi-create">Otomatik 11 oluştur</button><button class="btn primary" id="team-xi-apply">Maç simülasyonuna uygula</button></div>
+     <div class="team-xi-roster" id="team-xi-roster"><p class="placeholder">Takım seçildiğinde taslak burada açılır.</p></div>
+     <p id="team-xi-provenance" class="team-help">Kaynak güveni bekleniyor.</p>
+    </article>
+    <article class="panel">
+     <div class="panel-head"><div><small class="eyebrow">SON MAÇLAR / FORM / TAKVİM</small><h2>Maç takvimi</h2></div><span class="chip">Kaynaklı skorlar</span></div>
+     <div id="team-formline" class="team-formline"></div>
+     <div id="team-profile-matches" class="team-recent-games"></div>
+    </article>
+   </div>
+   <div class="team-two-col">
+    <article class="panel">
+     <div class="panel-head"><div><small class="eyebrow">SCOUT VERİ TABANI</small><h2>Oyuncu kadrosu</h2></div><span class="chip" id="team-roster-count">0 oyuncu</span></div>
+     <div id="team-roster-warning" class="team-help">Veriler kaynaklara göre sınırlı olabilir.</div>
+     <input type="search" id="team-roster-search" placeholder="Oyuncu / mevki ara..." aria-label="Kadrodaki oyuncuyu ara">
+     <div class="team-position-filters" id="team-position-filters"><button class="active" data-pos="all">Tümü</button><button data-pos="GK">Kaleci</button><button data-pos="DF">Defans</button><button data-pos="MF">Orta saha</button><button data-pos="FW">Forvet</button></div>
+     <div id="team-profile-roster" class="team-profile-roster"></div>
+    </article>
+    <article class="panel" id="team-player-box">
+     <div class="panel-head"><div><small class="eyebrow">OYUNCU PROFİLİ</small><h2 id="team-player-name">Oyuncu seç</h2></div><span class="chip" id="team-player-source">Kaynaklı bilgi</span></div>
+     <div id="team-player-detail"><p class="placeholder">Kadrodan futbolcu seçince gerçek kaynaklı bilgilerini ve oynadığı mevkiyi burada görürsün.</p></div>
+    </article>
+   </div>
+   <article class="panel">
+    <div class="panel-head"><div><small class="eyebrow">TAKIM İSTİHBARATI</small><h2>Maç öncesi değişiklikler</h2></div><button id="team-news-refresh" class="btn outline">↻ Haberleri güncelle</button></div>
+    <p class="team-help">Haberler yalnızca başlıklardan oluşur; sakatlık, kadro veya psikoloji teşhisi değildir. Bir oyuncuyu “şüpheli / yok” diye işaretlemek **senin manuel senaryondur**, otomatik sağlık verisi değildir.</p>
+    <div id="team-profile-news"><p class="placeholder">Takım seçildiğinde ilgili haber başlıkları aranır.</p></div>
+    <div id="team-profile-alerts"></div>
+   </article>
+  </div>
+ </div>
 </section>
 <section class="tabpage" id="page-lineup"><div class="section-intro"><small class="eyebrow">KADRO MODELLEME</small><h2>İlk 11'i maçtan önce oluştur.</h2><p>Oyuncu isimlerini, 1–10 arası kendi performans değerlendirmeni ve fiziksel hazır oluş yüzdesini gir. Gerçek oyuncu puanı otomatik uydurulmaz. Değişiklikler sonraki simülasyona dahil edilir.</p></div><div class="lineups"><div class="panel" id="lineup-home"></div><div class="panel" id="lineup-away"></div></div><div class="notice">İlk 11 isimlerini girmek tek başına olasılığı değiştirmez. <strong>Puan ve hazır oluş yüzdesi</strong> değerleri, öznel senaryo varsayımları olarak modeli sınırlı ölçüde etkiler. Bu bilgiler resmi kadro onayı olarak sunulmaz.</div><section id="scout-suite" class="scout-root">
 <div class="scout-head"><div><small class="eyebrow">SCOUT / OYUNCU PROFİLİ / KADRO GİRİŞİ</small><h2>Scout masası</h2><p>Mevki profili · izinli futbol verisi · fotoğraftan ilk 11</p></div><span class="chip">KAYNAKLI / MANUEL AYRI</span></div>
@@ -89,8 +146,8 @@
  <article class="panel"><h2>Hesaplama mantığı</h2><p>Tamamlanmış maçlardan hücum/savunma ve iç/deplasman gol ortalamaları çıkarılır. Kadro ve bağlam senaryoları bu ortalamayı sınırlı ölçüde değiştirir. Kullanıcı 1.000, 5.000 veya 10.000 Monte Carlo karşılaşması oluşturabilir.</p><p>1X2 sonuçları simülasyon dağılımıdır, doğrulanmış bahis olasılığı değildir.</p></article>
  <article class="panel"><h2>Ücretsiz haber akışı</h2><p>Google News RSS üzerinden yalnızca başlık, yayın zamanı ve haber bağlantısı alınır. Başlıkların anahtar kelime etiketleri <strong>olası risk sinyalidir</strong>; gerçek haber içeriğinin incelendiği veya iddianın doğrulandığı anlamına gelmez.</p><p>Haberin simülasyona katılması için kullanıcı onayı gerekir.</p></article>
  </div></section>
-<footer class="footer"><span>SIMULAB V2 • FREE DATA / EXPLICIT ASSUMPTIONS / 1.000 SIMULATIONS</span><span>Kesin maç tahmini veya bahis tavsiyesi değildir.</span></footer>
+<footer class="footer"><span>SIMULAB V5 • FREE DATA / SOURCE-LABELLED PLAYER PROFILES / 1.000–10.000 SIMULATIONS</span><span>Kesin maç tahmini veya bahis tavsiyesi değildir.</span></footer>
 </div>
 <div class="modal-back" id="sync-modal" aria-hidden="true"><div class="modal" role="dialog" aria-modal="true" aria-label="Veri güncelleme"><div class="modal-head"><div><small class="eyebrow">VERİ KAYNAKLARI</small><h2>Verileri Güncelle</h2></div><button id="close-sync" class="btn ghost" aria-label="Kapat">✕</button></div><p>Beş büyük lig + Şampiyonlar Ligi: ücretsiz açık maç arşivi ve anahtarsız web fikstürü. Kayıt veya API anahtarı gerekmez. Türkiye Süper Ligi ve Avrupa Ligi dahil değil.</p><div class="modal-actions"><button id="sync-current" class="btn outline">Seçili turnuvayı güncelle</button><button id="sync-all" class="btn primary">6 turnuvayı ücretsiz güncelle</button></div><div class="notice" id="sync-message">Henüz indirme başlatılmadı.</div><div class="divider"></div><h3>Güncel kaynak · ücretsiz ve anahtarsız</h3><p>OpenFootball, OpenLigaDB ve TheSportsDB ücretsiz servislerinden maç sonuçları ve takvimleri kontrol edilir. Hesap açmak veya API anahtarı girmek gerekmez. Kaynakların güncellenme sıklığı ve kapsamı farklı olabilir; önceki arşiv korunur.</p><button class="btn outline" id="sync-live">↻ Ücretsiz maç akışını tekrar kontrol et</button><div class="divider"></div><h3>Kendi CSV dosyan</h3><p>Kolonlar: Date, HomeTeam, AwayTeam, FTHG, FTAG. Sadece seçili lige aktarılır.</p><input type="file" id="csv-file" accept=".csv,text/csv"><button class="btn outline" id="import-csv">CSV içe aktar</button></div></div>
-<script src="./studio.js" defer></script><script src="./scout-v3.js" defer></script><script src="./replay-v3.js" defer></script>
+<script src="./studio.js" defer></script><script src="./scout-v3.js" defer></script><script src="./replay-v3.js" defer></script><script src="./team-v5.js" defer></script>
 </body></html>
