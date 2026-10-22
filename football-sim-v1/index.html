@@ -7,7 +7,7 @@
 <div class="app">
 <header class="topbar">
  <a href="./" class="logo" aria-label="SIMULAB ana sayfa"><span class="logo-icon">S<span class="logo-dot">●</span></span><span>SIMU<b>LAB</b><small>FOOTBALL INTELLIGENCE</small></span></a>
- <div class="top-actions"><span class="tag"><span class="live-dot"></span> V5 · TEAM & MATCH INTELLIGENCE</span><button class="btn primary" id="open-sync">↻ Verileri Güncelle</button></div>
+ <div class="top-actions"><span class="tag"><span class="live-dot"></span> V6 · MATCH INTELLIGENCE</span><button class="btn primary" id="open-sync">↻ Verileri Güncelle</button></div>
 </header>
 <section class="hero">
  <div><span class="eyebrow">MATCH INTELLIGENCE PLATFORM / V5</span><h1>Maç başlamadan <em>bin ihtimali</em> gör.</h1><p>Beş büyük lig + Şampiyonlar Ligi. Güncel fikstür, oyuncu keşfi, ilk 11 fotoğraf aktarımı, saha üzeri temsilî maç anlatımı ve 1.000–10.000 simülasyon.</p></div>
@@ -53,15 +53,50 @@
  <div class="match-lineup-source"><div><strong>Kadro kontrolü</strong><span id="match-source-xi">Maç seçildiğinde ücretsiz kaynaktaki kadro otomatik kontrol edilecek.</span></div><button id="match-xi-refresh" class="btn outline" type="button">↻ Kadroyu kontrol et</button></div>
  <div class="arena"><div class="field-lines"><div class="center-circle"></div><div class="goal left-goal"></div><div class="goal right-goal"></div><span class="ball" id="ball"></span><span class="field-text">TEMSiLİ SAHA ANİMASYONU • GERÇEK OLAY VERİSİ DEĞİL</span></div><div class="arena-overlay"><small id="sim-n">0 / 1.000 SİMÜLASYON</small><strong id="sim-score">— : —</strong><span id="sim-status">Başlamak için iki takım seç</span></div></div>
  <div class="simulation-settings"><label for="simulation-count">SİMÜLASYON SAYISI</label><select id="simulation-count" aria-label="Simülasyon sayısı"><option value="1000">1.000 maç</option><option value="5000" selected>5.000 maç</option><option value="10000">10.000 maç</option></select><span class="small-muted">Rakamlar gol modeli örneklemidir; gerçek maçların tekrar oynatımı değildir.</span></div>
+ <div class="v6-tactical-controls">
+  <div class="v6-mini-header"><strong><icon aria-hidden="true"></icon> V6 • TAKTİKSEL SENARYO</strong><small>Taktikler doğrulanmış takım oyun stili değil, senin seçtiğin varsayımlardır.</small></div>
+  <div class="v6-tactics-grid">
+   <label>Ev sahibi pres<select id="v6-home-press"><option value="normal">Dengeli</option><option value="high">Yüksek pres</option><option value="low">Alçak blok</option></select></label>
+   <label>Deplasman pres<select id="v6-away-press"><option value="normal">Dengeli</option><option value="high">Yüksek pres</option><option value="low">Alçak blok</option></select></label>
+   <label>Ev sahibi oyun<select id="v6-home-style"><option value="balanced">Dengeli</option><option value="possession">Pas oyunu</option><option value="counter">Kontra atak</option><option value="direct">Direkt hücum</option></select></label>
+   <label>Deplasman oyun<select id="v6-away-style"><option value="balanced">Dengeli</option><option value="possession">Pas oyunu</option><option value="counter">Kontra atak</option><option value="direct">Direkt hücum</option></select></label>
+  </div><p class="v6-tactic-status" id="v6-tactic-status">Dengeli başlangıç varsayımı.</p>
+ </div>
  <div class="sim-controls"><button class="btn primary big" id="simulate">▶ 5.000 MAÇI SİMÜLE ET</button><button class="btn outline" id="reset-factors" title="Manuel faktörleri sıfırla">↺ Faktörler</button></div>
  <div class="progress-track"><div id="sim-progress"></div></div>
  <div class="outcome"><div class="outcome-track"><span id="bar-home"></span><span id="bar-draw"></span><span id="bar-away"></span></div><div class="outcome-grid"><div><strong id="win-home">—</strong><small>Ev sahibi kazanır</small></div><div><strong id="win-draw">—</strong><small>Beraberlik</small></div><div><strong id="win-away">—</strong><small>Deplasman kazanır</small></div></div></div>
  <div class="analytics"><div class="mini"><h3>En sık skorlar</h3><div id="score-modes" class="placeholder">Simülasyon bekleniyor</div></div><div class="mini"><h3>Maç senaryoları</h3><div id="scenarios" class="placeholder">Simülasyon bekleniyor</div></div></div>
  <div class="impact" id="impact-box">Haber, ilk 11 ve psikolojik göstergelerin etkisi simülasyonda burada gösterilecek.</div>
  <div class="v5-run-explain" id="v5-run-explain">Maçı simüle ettiğinde, skorun arkasındaki takım formu, ilk 11 ve senaryo etkileri burada tek bir açıklamada birleştirilecek.</div>
+ <div class="v6-model-summary" id="v6-model-summary"><p class="placeholder">V6 Elo + Dixon–Coles motoru, model kapsamı ve skor olasılıkları burada görünecek.</p></div>
  </article>
  <article class="panel replay-panel" id="replay-panel"><div class="panel-head"><div><small class="eyebrow">04 / TEMSİLÎ MAÇ ANLATIMI</small><h2>FM tarzı maç tekrarı</h2></div><span class="chip">SİMÜLE OLAYLAR</span></div><div id="replay-root"><p class="placeholder">Önce bir eşleşmeyi simüle et; ardından en sık görülen skor senaryolarından birinin oyuncu bazlı temsilî akışını izleyebilirsin.</p></div></article>
  </div></div>
+ <section class="v6-laboratory" aria-label="Model doğrulama ve senaryo analizi">
+  <div class="v6-lab-intro"><div><small class="eyebrow">SIMULAB V6 / ARAŞTIRMA MASASI</small><h2>Modeli test et. İlk 11'i karşılaştır.</h2><p>Geçmiş maçların tamamlanmış skorlarını kullanarak kronolojik doğrulama; bağımsız gol modeli ve manuel senaryo karşılaştırmaları.</p></div><span class="chip">AÇIK VERİ + ŞEFFAF TAHMİN</span></div>
+  <div class="v6-lab-grid">
+   <article class="panel v6-lab-card">
+    <div class="panel-head"><div><small class="eyebrow">01 / GERÇEK GEÇMİŞ MAÇ TESTİ</small><h2>Backtest / kalibrasyon</h2></div><span class="chip">VERİ SIZINTISI YOK</span></div>
+    <p class="v6-muted">Her maç, kendi tarihinden <strong>önceki</strong> sonuçlarla tahmin edilir. Dixon–Coles + Elo tabanının Brier skoru ve log loss değeri hesaplanır. Bu test manuel senaryo etkilerini kapsamaz.</p>
+    <div class="v6-inline"><label for="v6-test-samples">Örneklem</label><select id="v6-test-samples"><option value="80">Son 80 maç</option><option value="130" selected>Son 130 maç</option><option value="220">Son 220 maç</option></select><button id="v6-backtest" class="btn primary" type="button">Geçmiş maçlarla test et</button></div>
+    <div id="v6-backtest-result"><p class="placeholder">Test için turnuvayı seç, ardından hesaplamayı başlat.</p></div>
+   </article>
+   <article class="panel v6-lab-card">
+    <div class="panel-head"><div><small class="eyebrow">02 / OYUNCU ETKİ ANALİZİ</small><h2>İlk 11 senaryoları</h2></div><span class="chip">ALTERNATİF KADRO</span></div>
+    <p class="v6-muted">Bir oyuncu oynamadığında yerine ortalama düzeyde bir yedek girdiğini varsayarak <strong>olasılığın ne kadar değişebileceğini</strong> karşılaştır. Oyuncu performansının kesin ölçümü değildir.</p>
+    <div class="v6-inline"><label for="v6-case-side">Takım</label><select id="v6-case-side"><option value="home">Ev sahibi</option><option value="away">Deplasman</option></select></div>
+    <div class="v6-inline"><label for="v6-case-player">Çıkarılan oyuncu</label><select id="v6-case-player"><option value="">Önce ilk 11 gir</option></select><button id="v6-compare" class="btn outline" type="button">Olasılıkları karşılaştır</button></div>
+    <div id="v6-case-result"><p class="placeholder">Maçı simüle et ve ilk 11'den bir oyuncu seç.</p></div>
+   </article>
+   <article class="panel v6-lab-card">
+    <div class="panel-head"><div><small class="eyebrow">03 / GERÇEK xG İÇİN VERİ GİRİŞİ</small><h2>xG maç arşivi</h2></div><span class="chip">İSTEĞE BAĞLI</span></div>
+    <p class="v6-muted">Ücretsiz açık skor arşivleri tam maç xG'si sunmaz. Kendi izinli xG CSV dosyan varsa aktar; veriler <strong>kaynak belirtilerek</strong> düşük ağırlıkla modele girsin. Dosya olmadan gerçek xG varmış gibi gösterilmez.</p>
+    <div class="v6-inline"><input id="v6-xg-file" type="file" accept=".csv,text/csv" aria-label="xG CSV yükle"><button id="v6-xg-import" type="button" class="btn outline">CSV yükle</button><button id="v6-xg-reset" type="button" class="btn outline">xG temizle</button></div>
+    <div id="v6-xg-status" class="v6-muted">Beklenen sütunlar: <code>date,home,away,home_xg,away_xg,league,source</code>. xG veri lisansını ve kaynağını sen doğrulamalısın.</div>
+   </article>
+  </div>
+  <p class="v6-bottom-note">Model: geçmiş skorlar + Elo + rakip gücüne göre düzeltilmiş gol oranları + Dixon–Coles düşük skor düzeltmesi. Taktik, moral ve eksik oyuncu etkisi sınırlandırılmış senaryolardır. Hiçbir tahmin garanti değildir.</p>
+ </section>
 </section>
 <section class="tabpage" id="page-team">
  <div class="section-intro"><small class="eyebrow">SIMULAB V5 / SCOUTING STATION</small><h2>Takımın her detayına gir.</h2><p>Altı turnuvanın takım profilleri, son form, fikstür, kaynaklı kadro, oyuncu profili ve maça göre oluşan kadro senaryosu tek bir yerde.</p></div>
@@ -150,5 +185,5 @@
 <footer class="footer"><span>SIMULAB V5 • FREE DATA / SOURCE-LABELLED PLAYER PROFILES / 1.000–10.000 SIMULATIONS</span><span>Kesin maç tahmini veya bahis tavsiyesi değildir.</span></footer>
 </div>
 <div class="modal-back" id="sync-modal" aria-hidden="true"><div class="modal" role="dialog" aria-modal="true" aria-label="Veri güncelleme"><div class="modal-head"><div><small class="eyebrow">VERİ KAYNAKLARI</small><h2>Verileri Güncelle</h2></div><button id="close-sync" class="btn ghost" aria-label="Kapat">✕</button></div><p>Beş büyük lig + Şampiyonlar Ligi: ücretsiz açık maç arşivi ve anahtarsız web fikstürü. Kayıt veya API anahtarı gerekmez. Türkiye Süper Ligi ve Avrupa Ligi dahil değil.</p><div class="modal-actions"><button id="sync-current" class="btn outline">Seçili turnuvayı güncelle</button><button id="sync-all" class="btn primary">6 turnuvayı ücretsiz güncelle</button></div><div class="notice" id="sync-message">Henüz indirme başlatılmadı.</div><div class="divider"></div><h3>Güncel kaynak · ücretsiz ve anahtarsız</h3><p>OpenFootball, OpenLigaDB ve TheSportsDB ücretsiz servislerinden maç sonuçları ve takvimleri kontrol edilir. Hesap açmak veya API anahtarı girmek gerekmez. Kaynakların güncellenme sıklığı ve kapsamı farklı olabilir; önceki arşiv korunur.</p><button class="btn outline" id="sync-live">↻ Ücretsiz maç akışını tekrar kontrol et</button><div class="divider"></div><h3>Kendi CSV dosyan</h3><p>Kolonlar: Date, HomeTeam, AwayTeam, FTHG, FTAG. Sadece seçili lige aktarılır.</p><input type="file" id="csv-file" accept=".csv,text/csv"><button class="btn outline" id="import-csv">CSV içe aktar</button></div></div>
-<script src="./studio.js" defer></script><script src="./scout-v3.js" defer></script><script src="./replay-v3.js" defer></script><script src="./team-v5.js" defer></script>
+<script src="./v6-engine.js" defer></script><script src="./studio.js" defer></script><script src="./scout-v3.js" defer></script><script src="./replay-v3.js" defer></script><script src="./team-v5.js" defer></script><script src="./v6-ui.js" defer></script>
 </body></html>
