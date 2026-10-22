@@ -172,7 +172,7 @@ function parseCSV(raw){
   const source=(col("source")>=0?val("source"):"Kullanıcı CSV").slice(0,80);
   if(!allowed.has(league)||!/^\d{4}-\d\d-\d\d$/.test(date)||
    Number.isNaN(Date.parse(date))||date>new Date().toISOString().slice(0,10)||!home||!away||home===away||
-   !Number.isFinite(hx)||!Number.isFinite(ax)||hx<0||ax<0||hx>9||ax>9){dropped++;continue}
+   !val("home_xg")||!val("away_xg")||!Number.isFinite(hx)||!Number.isFinite(ax)||hx<0||ax<0||hx>9||ax>9){dropped++;continue}
   data.push({date,home:home.slice(0,90),away:away.slice(0,90),homeXg:hx,awayXg:ax,league,
    source:source||"Kullanıcı CSV · bağımsız doğrulama yok"});
  }
