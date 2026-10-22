@@ -1,6 +1,6 @@
 // Optional football-data.org FREE tier server proxy. Secret never sent to the browser.
 // Configure FOOTBALL_DATA_API_KEY as Vercel project env variable. Free tier delayed scores.
-const CODES={eng:"PL",esp:"PD",ger:"BL1",ita:"SA",fra:"FL1"};
+const CODES={eng:"PL",esp:"PD",ger:"BL1",ita:"SA",fra:"FL1",ucl:"CL"};
 export default async function handler(req,res){
  if(req.method!=="GET")return res.status(405).json({error:"Method not allowed"});
  const league=typeof req.query.league==="string"?req.query.league:"";
