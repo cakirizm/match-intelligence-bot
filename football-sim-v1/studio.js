@@ -392,7 +392,7 @@ function simulationReset(){
  for(const id of ["win-home","win-draw","win-away"])text($(id),"—");
  for(const id of ["bar-home","bar-draw","bar-away"])$(id).style.width="0%";
  $("sim-progress").style.width="0%";
- text($("sim-n"),"0 / 1.000 SİMÜLASYON");text($("sim-score"),"— : —");text($("sim-status"),"Başlamaya hazır");
+ text($("sim-n"),"0 / "+(Number($("simulation-count")?.value)||1000).toLocaleString("tr-TR")+" SİMÜLASYON");text($("sim-score"),"— : —");text($("sim-status"),"Başlamaya hazır");
  $("score-modes").replaceChildren(node("p","placeholder","Simülasyon bekleniyor."));
  $("scenarios").replaceChildren(node("p","placeholder","Simülasyon bekleniyor."));
  text($("impact-box"),"Model girdileri hesaplanmayı bekliyor.");
@@ -402,7 +402,8 @@ function simulate(){
  if(!home||!away||home===away){notify("İki farklı takım seçin.",true);return}
  let model;try{model=modelRates(home,away)}catch(e){notify("Simülasyon başlatılamadı: "+String(e.message||e),true);return}
  simulationReset();const myToken=runToken;
- const trials=Array.from({length:1000},()=>{
+ const runCount=Math.max(1000,Math.min(10000,Number($("simulation-count")?.value)||1000));
+ const trials=Array.from({length:runCount},()=>{
   const pace=clamp(.85+Math.random()*.30,.75,1.25);
   return [samplePoisson(model.home*pace),samplePoisson(model.away*pace)];
  });
@@ -410,14 +411,14 @@ function simulate(){
  let n=0;
  const draw=()=>{
   const total=n,prop=x=>x/total;
-  text($("sim-n"),n.toLocaleString("tr-TR")+" / 1.000 SİMÜLASYON");
-  $("sim-progress").style.width=n/10+"%";
+  text($("sim-n"),n.toLocaleString("tr-TR")+" / "+runCount.toLocaleString("tr-TR")+" SİMÜLASYON");
+  $("sim-progress").style.width=(100*n/runCount)+"%";
   text($("win-home"),pct(prop(counts.h)));text($("win-draw"),pct(prop(counts.d)));text($("win-away"),pct(prop(counts.a)));
   $("bar-home").style.width=pct(prop(counts.h));$("bar-draw").style.width=pct(prop(counts.d));$("bar-away").style.width=pct(prop(counts.a));
   const scoreBox=$("score-modes"),scen=$("scenarios");scoreBox.replaceChildren();scen.replaceChildren();
   for(const [k,v] of Object.entries(counts.scores).sort((a,b)=>b[1]-a[1]).slice(0,5))detailsRow(scoreBox,k,v+" kez · "+pct(prop(v)));
   for(const [k,v] of [["2,5 Üst",counts.over25],["2,5 Alt",counts.under25],["KG Var",counts.btts],["3,5 Üst",counts.over35],["Ev gol yemeden",counts.cleanH],["Dep gol yemeden",counts.cleanA]])detailsRow(scen,k,pct(prop(v)));
-  if(total===1000)text($("sim-status"),"1.000 koşu tamamlandı");
+  if(total===runCount)text($("sim-status"),runCount.toLocaleString("tr-TR")+" koşu tamamlandı");
   const se=Math.sqrt(Math.max(0,prop(counts.h)*(1-prop(counts.h))/n));
   text($("impact-box"),"Beklenen gol "+model.home.toFixed(2)+" : "+model.away.toFixed(2)+" (xG değil) • Ev değişimi "+signed(model.homeFactor-1)+" · Dep değişimi "+signed(model.awayFactor-1)+
    " • Sonuçların Monte Carlo örnekleme payı (ev galibiyeti yaklaşık ±"+(196*se).toFixed(1)+" yüzde puan) • "+
@@ -426,7 +427,7 @@ function simulate(){
  function tick(){
   if(myToken!==runToken)return;
   const step=speed===1?1:speed===10?10:100;
-  for(let j=0;j<step&&n<1000;j++){
+  for(let j=0;j<step&&n<runCount;j++){
    const [h,a]=trials[n++],key=h+" - "+a;counts.scores[key]=(counts.scores[key]||0)+1;
    if(h>a)counts.h++;else if(h===a)counts.d++;else counts.a++;
    if(h+a>1)counts.over15++;if(h+a>2)counts.over25++;else counts.under25++;
@@ -437,7 +438,10 @@ function simulate(){
   }
   $("ball").style.left=(12+Math.random()*75)+"%";$("ball").style.top=(12+Math.random()*75)+"%";
   draw();
-  if(n<1000)setTimeout(tick,speed===1?110:speed===10?75:70);
+  if(n<runCount)setTimeout(tick,speed===1?110:speed===10?75:70);
+  else if(typeof window!=="undefined"&&window.SIMULAB_REPLAY?.onComplete){
+   try{window.SIMULAB_REPLAY.onComplete({trials,home,away,model,chosen,runCount,league})}catch(e){console.error("Replay setup failed",e)}
+  }
  }
  tick();
 }
@@ -607,5 +611,36 @@ function init(){
  connectEvents();setLeague("eng");setTab("match");simulationReset();
  if(LEAGUES.filter(l=>l.id!=="ucl").every(l=>!matches[l.id]?.length)){notify("İlk açılış: beş ligin ücretsiz maç arşivi indiriliyor.");syncOpenFootball(LEAGUES.filter(l=>l.id!=="ucl").map(l=>l.id))}
 }
+
+if(typeof window!=="undefined"){
+ window.SIMULAB_API={
+  getState:()=>{
+   const {home,away}=currentPair();
+   return {league,home,away,chosen:chosen?{...chosen}:null,
+    homeXI:home?JSON.parse(JSON.stringify(lineupFor(home))):null,
+    awayXI:away?JSON.parse(JSON.stringify(lineupFor(away))):null,
+    results:currentRows().slice(-60),fixtures:upcoming().slice(0,60)};
+  },
+  getLineup:team=>JSON.parse(JSON.stringify(lineupFor(team))),
+  saveLineup:(team,newNames,formation)=>{
+   if(!team||!Array.isArray(newNames))return false;
+   const data=lineupFor(team);
+   if(formation&&FORMS[formation])data.formation=formation;
+   for(let i=0;i<Math.min(11,newNames.length);i++){
+    const entry=newNames[i],name=typeof entry==="string"?entry:entry?.name;
+    if(typeof name==="string"&&name.trim()){
+     data.players[i].name=name.trim().slice(0,60);
+     if(entry&&typeof entry==="object"&&Number.isFinite(Number(entry.rating)))data.players[i].rating=clamp(Number(entry.rating),1,10);
+     if(entry&&typeof entry==="object"&&Number.isFinite(Number(entry.fitness)))data.players[i].fitness=clamp(Number(entry.fitness),50,100);
+    }
+   }
+   const ok=persist(LS.lineups,lineups);renderLineups();return ok;
+  },
+  simulate:()=>simulate(),
+  notice:(message,warn)=>notify(message,warn),
+  refresh:()=>{updateSelectedUI();syncBanner()}
+ };
+}
+
 init();
 })();
