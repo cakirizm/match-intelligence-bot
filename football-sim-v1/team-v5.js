@@ -447,6 +447,7 @@ function afterSimulation(report){
   "Ev takım geçmişi: "+model.usedHome+" maç; deplasman: "+model.usedAway+" maç. Model güveni: "+conf.grade+".",
   "İlk 11 girilmiş oyuncu: "+(model.hl?.filled||0)+"/11 – "+(model.al?.filled||0)+"/11; kaynak profili: "+((model.hl?.sourceProfiles||0)+(model.al?.sourceProfiles||0))+" oyuncu.",
   "Manuel moral/kadro/haber etkisi sonrası gol düzeltmesi: EV "+((model.homeFactor-1)*100).toFixed(1)+"%, DEP "+((model.awayFactor-1)*100).toFixed(1)+"%.",
+  "Takvim dinlenmesi: EV "+(model.restHome?.known?model.restHome.days+" gün":"veri yok")+", DEP "+(model.restAway?.known?model.restAway.days+" gün":"veri yok")+". Etki maç aralığına göre sınırlı bir varsayımdır, fizyolojik ölçüm değildir.",
   (model.hl?.absent||0)+(model.al?.absent||0)>0?"Oynamayacak/cezalı senaryosu işaretli oyuncu var; gerçek sakatlık doğrulaması değildir.":"Manuel 'oynamayacak' senaryosu kullanılmadı.",
   "Sonraki sık skor: "+(second?second[0]+" ("+(100*second[1]/runCount).toFixed(1)+"%)":"veri yok")+".",
   "Gol, şut ve asist animasyonu örnekleme ile üretilir. Gerçek saha hareketi veya resmî kadro bilgisi değildir."
