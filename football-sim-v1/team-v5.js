@@ -101,7 +101,7 @@ function points(t,league){
 }
 function renderTop(){
  if(!selected)return;
- const item=currentProfile(),data=item?.profile||null,club=data?.profile||null;
+ const item=currentProfile(),club=item?.profile||null;
  $("team-profile-name").textContent=selected.name;
  $("team-profile-league").textContent=LEAGUES[selected.league]+" • "+(item?.source||"AÇIK VERİ KONTROLÜ");
  $("team-profile-details").textContent=club?[club.stadium,club.location,club.formed?"Kuruluş "+club.formed:""].filter(Boolean).join(" · "):"Açık futbol veri kaynaklarından takım bilgisi deneniyor.";
@@ -135,7 +135,7 @@ function renderGames(){
  }
 }
 function candidates(teamData,shape){
- const arr=(teamData?.players||[]).filter(p=>p.name);
+ const arr=(teamData?.players||[]).filter(p=>p.name&&!["out","suspended"].includes(getStatus(selected?.name||teamData.requestedTeam||"",selected?.league||teamData.league||"",p.name)));
  const used=new Set(),out=[];
  const normPos=x=>["GK","DF","MF","FW"].includes(x)?x:null;
  for(const pos of SHAPES[shape]||SHAPES["4-3-3"]){
@@ -168,7 +168,11 @@ function reviewXI(shouldChange=true){
 function applyXI(auto=false){
  if(!selected||!recommended?.length)return false;
  if(recommended.some(p=>!p)){if(!auto)alert("11 pozisyonu tamamlayamadım. Eksik oyuncuları Scout & İlk 11 bölümünde elle ekleyebilirsin.");return false}
- const match=API().getState(),team=selected.name;
+ const team=selected.name;
+ if(!API().setMatchSide)return false;
+ const okSide=API().setMatchSide("home",team,selected.league);
+ if(!okSide){if(!auto)alert("Bu takım ilgili turnuvanın fikstüründe bulunamadı.");return false}
+ const match=API().getState();
  if(!auto&&!confirm("Bu, doğrulanmış maç ilk 11'i değildir. "+team+" için mevki temelli taslağı simülasyon kadrosu olarak kullanmak istiyor musun?"))return false;
  const names=recommended.map(p=>p.name);
  const result=API().saveLineup(team,names,$("team-xi-formation").value);
@@ -297,6 +301,7 @@ async function fetchTeam(name,league,opts={}){
    if(selected?.name===name&&selected?.league===league)renderFull();
    if(opts.autoXI){
     const current=API().getState();
+    if(current.league!==league||(!sameTeam(current.home,name)&&!sameTeam(current.away,name)))return data;
     const currentXI=API().getLineup(name);
     const blank=currentXI.players.every(p=>!p.name);
     if(blank&&data.automaticXIAllowed&&data.players?.length>=11){
