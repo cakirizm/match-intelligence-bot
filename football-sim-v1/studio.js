@@ -194,7 +194,13 @@ function lineupFor(team){
  if(!FORMS[item.formation])item.formation="4-3-3";
  if(!Array.isArray(item.players))item.players=[];
  while(item.players.length<11)item.players.push({name:"",rating:6.5,fitness:100});
- item.players=item.players.slice(0,11).map(p=>({name:String(p.name||"").slice(0,60),rating:clamp(Number(p.rating)||6.5,1,10),fitness:clamp(Number(p.fitness)||100,50,100)}));
+ item.players.length=11;
+ for(const p of item.players){
+  // Normalize the existing player object in place so form listeners keep a live reference.
+  p.name=String(p.name||"").slice(0,60);
+  p.rating=clamp(Number(p.rating)||6.5,1,10);
+  p.fitness=clamp(Number(p.fitness)||100,50,100);
+ }
  return item;
 }
 function makeLineupPanel(side,team){
