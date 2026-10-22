@@ -134,8 +134,8 @@ function renderGames(){
   }
  }
 }
-function candidates(teamData,shape){
- const arr=(teamData?.players||[]).filter(p=>p.name&&!["out","suspended"].includes(getStatus(selected?.name||teamData.requestedTeam||"",selected?.league||teamData.league||"",p.name)));
+function candidates(teamData,shape,teamName,leagueId){
+ const arr=(teamData?.players||[]).filter(p=>p.name&&!["out","suspended"].includes(getStatus(teamName||teamData.requestedTeam||"",leagueId||teamData.league||"",p.name)));
  const used=new Set(),out=[];
  const normPos=x=>["GK","DF","MF","FW"].includes(x)?x:null;
  for(const pos of SHAPES[shape]||SHAPES["4-3-3"]){
@@ -148,7 +148,7 @@ function candidates(teamData,shape){
 }
 function reviewXI(shouldChange=true){
  const data=currentProfile(),shape=$("team-xi-formation").value,box=$("team-xi-roster");
- if(shouldChange)recommended=candidates(data,shape);
+ if(shouldChange)recommended=candidates(data,shape,selected.name,selected.league);
  box.replaceChildren();
  const roles=SHAPES[shape]||SHAPES["4-3-3"];
  let missing=0;
@@ -232,7 +232,7 @@ async function showPlayer(p){
  const captured={...selected};
  select.addEventListener("change",()=>{
   setStatus(captured.name,captured.league,p.name,select.value);
-  if(selected?.name===captured.name&&selected?.league===captured.league){renderRoster();reviewXI(false)}
+  if(selected?.name===captured.name&&selected?.league===captured.league){renderRoster();reviewXI(true)}
   const match=API().getState();
   if(sameTeam(match.home,captured.name)||sameTeam(match.away,captured.name))scheduleSimulation(350);
  });
@@ -295,7 +295,7 @@ function applyAutoDraftToEmptyXI(name,league,data){
  const currentXI=API().getLineup(name);
  if(currentXI.players.some(p=>p.name))return false;
  const shape=currentXI.formation||"4-3-3";
- const lineup=candidates(data,shape);
+ const lineup=candidates(data,shape,name,league);
  if(lineup.length!==11||lineup.some(p=>!p))return false;
  const applied=API().saveLineup(name,lineup.map(p=>p.name),shape);
  if(applied)scheduleSimulation(650);
