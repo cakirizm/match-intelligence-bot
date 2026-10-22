@@ -1,55 +1,93 @@
-// SIMULAB V3 free, keyless match discovery.
-// Source: ESPN public web endpoints (unofficial, undocumented, may stop working).
-// Uses one server-side, cached, read-only request per league. Never claims licensing.
-const LEAGUES={eng:"eng.1",esp:"esp.1",ger:"ger.1",ita:"ita.1",fra:"fra.1",ucl:"uefa.champions"};
-function ymd(date){const d=new Date(date);if(Number.isNaN(d.valueOf()))return null;return d.toISOString().slice(0,10)}
-function dateParam(date){return date.toISOString().slice(0,10).replace(/-/g,"")}
-function teamLabel(c){
- const t=c?.team||{};
- return String(t.displayName||t.name||t.shortDisplayName||t.abbreviation||"").trim().slice(0,90);
+// SIMULAB V4: Free, keyless 2026/27 fixtures/results for 5 leagues + UCL.
+// 1) fixturedownload.com public JSON; 2) open-matchday noncommercial backup.
+// Scores ONLY considered final if both supplied and kickoff in the past.
+// The sources are independent services, not official guarantees.
+const LEAGUES={
+ eng:{feed:"epl-2026",folder:"ENG_1_premier-league"},
+ esp:{feed:"la-liga-2026",folder:"ESP_1_la-liga"},
+ ger:{feed:"bundesliga-2026",folder:"GER_1_bundesliga"},
+ ita:{feed:"serie-a-2026",folder:"ITA_1_serie-a"},
+ fra:{feed:"ligue-1-2026",folder:"FRA_1_ligue-1"},
+ ucl:{feed:"champions-league-2026",folder:"UEFA_1_champions-league"}
+};
+const numeric=v=>v===null||v===undefined||v===""?null:Number.isInteger(Number(v))&&Number(v)>=0&&Number(v)<30?Number(v):null;
+const isoDate=s=>/^\d{4}-\d\d-\d\d$/.test(String(s||""))&&!Number.isNaN(Date.parse(s));
+async function fetchText(url,timeout=12000){
+ const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),timeout);
+ try{const response=await fetch(url,{signal:controller.signal,headers:{"Accept":"application/json,text/csv,*/*"}});
+  if(!response.ok)throw Error("HTTP "+response.status);return await response.text();
+ }finally{clearTimeout(timer)}
 }
-function parseEvent(event){
- const comp=event?.competitions?.[0],participants=comp?.competitors||[];
- const home=participants.find(c=>c.homeAway==="home"),away=participants.find(c=>c.homeAway==="away");
- if(!home||!away)return null;
- const homeName=teamLabel(home),awayName=teamLabel(away),iso=String(event.date||comp?.date||"");
- if(!homeName||!awayName||!ymd(iso))return null;
- const status=event?.status?.type||comp?.status?.type||{};
- const complete=status.completed===true||status.state==="post";
- const num=c=>{const s=c?.score;const n=typeof s==="object"?Number(s?.value??s?.displayValue):Number(s);return Number.isInteger(n)&&n>=0&&n<45?n:null};
- const hg=num(home),ag=num(away);
- const base={date:iso.slice(0,10),time:iso.slice(11,16),kickoff:iso,home:homeName,away:awayName,
-  eventId:String(event.id||""),provider:"ESPN web feed (unofficial)",updatedAt:new Date().toISOString()};
- if(complete&&hg!==null&&ag!==null)return {...base,hg,ag,source:"ESPN web feed",isResult:true};
- if(complete)return null; // Never fabricate a completed match without a confirmed score
- return {...base,status:status.description||"Scheduled",source:"ESPN web feed",isResult:false};
+function csvRows(s){
+ const rows=[];let row=[],v="",q=false;
+ s=s.replace(/^\uFEFF/,"");
+ for(let i=0;i<s.length;i++){
+  const c=s[i];
+  if(c==='"'){if(q&&s[i+1]==='"'){v+='"';i++}else q=!q}
+  else if(c===","&&!q){row.push(v);v=""}
+  else if((c==="\n"||c==="\r")&&!q){if(c==="\r"&&s[i+1]==="\n")i++;row.push(v);if(row.some(Boolean))rows.push(row);row=[];v=""}
+  else v+=c;
+ }
+ row.push(v);if(row.some(Boolean))rows.push(row);
+ if(rows.length<2)throw Error("CSV boş");
+ const head=rows.shift().map(x=>x.trim().toLowerCase());
+ return rows.map(r=>Object.fromEntries(head.map((k,i)=>[k,String(r[i]||"").trim()])));
+}
+function normalized(data){
+ const done=new Map(),future=new Map(),key=m=>m.date+"|"+m.home.toLowerCase()+"|"+m.away.toLowerCase();
+ for(const r of data.completed)if(r.home&&r.away&&isoDate(r.date))done.set(key(r),r);
+ for(const f of data.upcoming)if(f.home&&f.away&&isoDate(f.date)&&!done.has(key(f)))future.set(key(f),f);
+ return {...data,completed:[...done.values()].sort((a,b)=>a.date.localeCompare(b.date)),upcoming:[...future.values()].sort((a,b)=>a.date.localeCompare(b.date))};
+}
+async function primary(l){
+ const url="https://fixturedownload.com/feed/json/"+l.feed;
+ const raw=JSON.parse(await fetchText(url));
+ if(!Array.isArray(raw)||!raw.length)throw Error("Fixture Download şeması beklenen biçimde değil.");
+ const completed=[],upcoming=[],today=new Date().toISOString().slice(0,10);
+ for(const m of raw){
+  const utc=String(m.DateUtc||""),date=utc.slice(0,10),home=String(m.HomeTeam||"").trim(),away=String(m.AwayTeam||"").trim();
+  if(!isoDate(date)||!home||!away||home===away||/^TBD\b/i.test(home)||/^TBD\b/i.test(away))continue;
+  const one=numeric(m.HomeTeamScore),two=numeric(m.AwayTeamScore);
+  const time=utc.slice(11,16),round=m.RoundNumber==null?null:String(m.RoundNumber);
+  const kickoffUtc=utc&&(/Z$/i.test(utc)?utc:utc.replace(" ","T")+"Z");
+  const base={date,time,home,away,round,kickoffUtc,source:"Fixture Download",matchId:String(m.MatchNumber||"")};
+  if(date<=today&&one!==null&&two!==null)completed.push({...base,hg:one,ag:two});
+  else upcoming.push(base);
+ }
+ const data=normalized({completed,upcoming});
+ if(!data.completed.length&&!data.upcoming.length)throw Error("Sezon fikstürü boş");
+ return {...data,provider:"Fixture Download",timezone:"UTC",sourceUrl:url,licensing:"Provider terms apply"};
+}
+async function secondary(l){
+ const base="https://raw.githubusercontent.com/oladeeayo/open-matchday/main/data/"+l.folder+"/";
+ const contents=await Promise.all(["results_2627.csv","fixtures_2627.csv"].map(name=>fetchText(base+name)));
+ const results=csvRows(contents[0]),fixtures=csvRows(contents[1]),completed=[],upcoming=[];
+ for(const x of results){
+  const h=numeric(x.ft_home),a=numeric(x.ft_away);
+  if(!isoDate(x.date)||h===null||a===null||!x.home||!x.away)continue;
+  completed.push({date:x.date,time:x.time||"",home:x.home,away:x.away,hg:h,ag:a,round:x.gw||null,source:"Open Matchday (yedek)"});
+ }
+ for(const x of fixtures){
+  if(!isoDate(x.date)||!x.home||!x.away)continue;
+  upcoming.push({date:x.date,time:x.time||"",home:x.home,away:x.away,round:x.gw||null,source:"Open Matchday (yedek)"});
+ }
+ const data=normalized({completed,upcoming});
+ if(!data.completed.length&&!data.upcoming.length)throw Error("Yedek kaynak boş");
+ return {...data,provider:"Open Matchday (attributed noncommercial backup)",timezone:"provider local (unverified)",
+   sourceUrl:"https://github.com/oladeeayo/open-matchday/tree/main/data/"+l.folder,licensing:"Personal, informational, non-commercial use; provider terms apply"};
 }
 export default async function handler(req,res){
- if(req.method!=="GET")return res.status(405).json({error:"Only GET supported"});
+ if(req.method!=="GET")return res.status(405).json({error:"GET only"});
  const league=typeof req.query?.league==="string"?req.query.league:"";
  if(!Object.prototype.hasOwnProperty.call(LEAGUES,league))return res.status(400).json({error:"Unsupported league"});
- const now=new Date(),from=new Date(now.getTime()-42*86400000),to=new Date(now.getTime()+108*86400000);
- const dates=dateParam(from)+"-"+dateParam(to);
- const url="https://site.api.espn.com/apis/site/v2/sports/soccer/"+LEAGUES[league]+"/scoreboard?dates="+dates+"&limit=400";
- const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),14500);
- try{
-  const reply=await fetch(url,{signal:controller.signal,headers:{"Accept":"application/json"}});
-  if(!reply.ok)throw Error("ESPN HTTP "+reply.status);
-  const doc=await reply.json();
-  if(!Array.isArray(doc.events))throw Error("Unknown public scoreboard response");
-  const parsed=doc.events.map(parseEvent).filter(Boolean);
-  const uniq=new Map();
-  for(const game of parsed)uniq.set(game.eventId||[game.date,game.home,game.away].join("|"),game);
-  const all=[...uniq.values()].sort((a,b)=>a.kickoff.localeCompare(b.kickoff));
-  res.setHeader("Cache-Control","public, s-maxage=1200, stale-while-revalidate=3600");
-  res.status(200).json({
-    league,provider:"ESPN public web scoreboard (undocumented)",officialApi:false,sourceUpdatedAt:new Date().toISOString(),
-    coverageFrom:ymd(from),coverageTo:ymd(to),returnedEvents:doc.events.length,
-    complete:all.filter(e=>e.isResult),upcoming:all.filter(e=>!e.isResult),
-    disclaimer:"Unofficial publicly accessible web endpoint; subject to provider terms, changes and outages."
-  });
- }catch(error){
-  res.setHeader("Cache-Control","public, s-maxage=120");
-  res.status(502).json({error:"Ücretsiz fikstür akışına şu anda erişilemedi.",detail:String(error?.message||error).slice(0,170),provider:"ESPN public web feed"});
- }finally{clearTimeout(timer)}
+ let result;
+ try{result=await primary(LEAGUES[league])}
+ catch(primaryError){
+  try{result=await secondary(LEAGUES[league]);result.warning="Birincil kaynak geçici hatalı: "+String(primaryError.message||primaryError).slice(0,110)}
+  catch(secondaryError){
+   return res.status(502).json({error:"İki ücretsiz maç kaynağına da erişilemedi.",primary:String(primaryError.message||primaryError).slice(0,140),secondary:String(secondaryError.message||secondaryError).slice(0,140)});
+  }
+ }
+ res.setHeader("Cache-Control","public, s-maxage=900, stale-while-revalidate=1800");
+ return res.status(200).json({league,season:"2026-27",fetchedAt:new Date().toISOString(),...result});
 }
