@@ -1,4 +1,4 @@
-# SIMULAB V5 — Futbol Takım Profilleri ve Birleşik Simülasyon
+# SIMULAB V6 — Futbol Takım Profilleri ve Birleşik Simülasyon
 
 **Tamamen ücretsiz veri kaynaklarına dayanabilen** futbol analiz sitesi. Beş büyük Avrupa ligi (**Premier League, La Liga, Bundesliga, Serie A, Ligue 1**) ve **UEFA Şampiyonlar Ligi**. Türkiye Süper Ligi ve UEFA Avrupa Ligi yok.
 
@@ -65,3 +65,45 @@ Proje deposu `cakirizm/match-intelligence-bot`, Vercel kök dizini `football-sim
 ### Dağıtım
 
 GitHub main dalına commit sonrası Vercel Git entegrasyonu etkinse otomatik dağıtım beklenir. Vercel bağlantısının yetkisi yoksa yeni kod GitHub'da olsa bile canlı site güncellenmeyebilir. **GitHub commit kaydı, tek başına canlı dağıtımın doğrulandığı anlamına gelmez.**
+
+
+---
+
+## SIMULAB V6 — Tahmin doğrulama ve taktik laboratuvarı (Ekim 2026)
+
+### V6 neleri değiştiriyor?
+
+- **Elo güç derecelendirmesi:** maçın oynanmasından önceki tamamlanmış skorlarla güncellenen takım reytingi. Takım isimleri ve kaynak mükerrer kayıtları normalize edilir; farklı liglerdeki ortak takımlar rekabet verisini sınırlı biçimde birbirine bağlar.
+- **Dixon–Coles düşük skor düzeltmesi:** 0-0, 1-0, 0-1 ve 1-1 olasılıkları birbirinden bağımsız Poisson yerine düzeltilmiş ortak skor dağılımından gelir. 0-0/1-1 gibi geçerli sonuçlar bilinçli olarak elenmez.
+- **Rakip gücüne göre normalizasyon:** geçmiş gol atma/yeme oranları, ev/deplasman gol tabanları ve rakip Elo gücü kullanılarak kısmen dengelenir.
+- **Güven ve veri kapsamı:** takımın kaç gerçek skoru bulunduğu, ne kadar eski olduğu, modelin veri kapsamı ve rho düzeltmesi raporda gösterilir.
+- **Taktik senaryoları:** ev/deplasman yüksek pres, alçak blok, pas, direkt oyun, kontra. Bunların gol oranına etkisi **küçük manuel varsayımlardır**; gerçek takım oyun tarzının otomatik tespiti değildir.
+- **İlk 11 alternatifi:** kullanıcı bir oyuncuyu çıkararak yerine ortalama kalitede aynı mevki oyuncusunun girdiği varsayımsal senaryonun olasılık değişimini karşılaştırabilir.
+- **Kronolojik geriye dönük test:** seçilen lig için 80/130/220/500 geçmiş maçta maç öncesi mevcut olan sonuçlar kullanılarak Brier, log loss, 1X2 favori isabeti ve kalibrasyon aralıkları raporlanır. Referans her maçtan önceki son 140 lig sonucuna göre oluşturulur; **gelecek maçlar eğitimde kullanılmaz**.
+- **Mobil performans:** tarayıcı destekliyorsa model testi Web Worker ile arka iş parçacığında çalışır; sayfa etkileşimi donmaz. Worker desteklenmezse tek iş parçacıklı hesap devreye girer.
+- **Gerçek xG desteği (kullanıcı verisi):** isteğe bağlı `date,home,away,home_xg,away_xg,league,source` sütunlu CSV dosyası tarayıcı içinde işlenip cihazında saklanır. Yalnızca geçmiş, geçerli kayıtlar ve iki takıma ait yeterli örnek varsa sınırlı ağırlıkla kullanılır. **Ücretsiz fikstür kaynaklarından otomatik tam sezon xG alındığı iddia edilmez.**
+- **Gelişmiş temsili canlandırma:** gol modeliyle tutarlı bitiş skorundan top kazanımı, paslarla ilerleme, ceza sahası girişi, şut ve goller içeren bağlantılı *kurgusal* pozisyon zincirleri üretilir. Bunlar maçın gerçek olay haritası değildir.
+
+### Maç Merkezi kullanımı
+
+1. Siteden turnuva ve maçı seç, kaynaklı takım/kadro sayfalarını incele.
+2. V6 taktik panelinden kendi varsayımsal oyun planını seç.
+3. 1.000, 5.000 veya 10.000 simülasyonu çalıştır; Monte Carlo ve Dixon–Coles dağılımına bak.
+4. **Modeli test et. İlk 11'i karşılaştır.** bölümünden 80–500 geçmiş maçla doğrulama yap.
+5. **İlk 11 senaryoları** bölümünden bir oyuncuyu çıkarıp aynı temeli kullanan alternatif sonuçları karşılaştır.
+6. Kendi izinli gerçek xG verin varsa CSV ile içe aktar; ardından maçı yeniden simüle et.
+
+### Mimari
+
+- `v6-engine.js` — açık veriyle tarihsel güç değerlendirmesi, gol oranı, Dixon–Coles dağılımı ve kalibrasyon.
+- `v6-ui.js` — taktikler, maç senaryosu, xG CSV, model raporu ve doğrulama arayüzü.
+- `v6-backtest-worker.js` — kullanıcı cihazındaki Web Worker üzerinden kronolojik maç testi.
+- `tests/v6-engine.test.cjs` — Node.js yerleşik test sistemi ile bağımsız sıfır bağımlılıklı kontrol. Yerelde `node --test tests/v6-engine.test.cjs`.
+
+### Dikkat: modelin sınırları
+
+Bu yapı **profesyonel seviyede kalibre edildiği ispatlanmış bir tahmin sistemi değildir**. Veri kalitesi, fikstür tarihinin doğruluğu, ücretsiz kaynakların oyuncu istatistiği eksikliği ve manuel senaryo ayarları belirleyici belirsizliklerdir. Taktik, oyuncu değişikliği ve psikoloji etkisi için kontrollü geçmiş doğrulama henüz yapılmadı; backtest yalnızca temel Elo/Dixon–Coles skorlu tahmin motorunu değerlendirir. Canlandırma kurgusaldır, sahadaki pozisyon takibi yoktur. Stat hava durumu, güncel resmî xG, optik tracking ve takım antrenman verileri bu sürümün içinde **yoktur**.
+
+### Yayın durumu
+
+GitHub ana dalındaki dosyalar güncellendi; bu, otomatik olarak Vercel canlı sitesinin güncellendiği anlamına gelmez. Vercel'in ücretsiz dağıtım günlük kotası dolarsa yeni üretim dağıtımı geçici olarak reddedilebilir. Canlı adresin son commit ile eşleştiği ayrıca kontrol edilmelidir.
