@@ -174,6 +174,7 @@ function chooseFixture(m){
  $("simulate").scrollIntoView({behavior:"smooth",block:"center"});
  setTimeout(()=>simulate(),150);
  loadNews();
+ window.SIMULAB_V5?.onMatchSelected?.(m);
 }
 
 function fmtKickoff(m){
@@ -407,10 +408,11 @@ function makeLineupPanel(side,team){
 function renderLineups(){const {home,away}=currentPair();makeLineupPanel("home",home);makeLineupPanel("away",away)}
 const signed=n=>(n>=0?"+":"")+(100*n).toFixed(1)+"%";
 function lineupEffect(team){
- const x=lineupFor(team),positions=FORMS[x.formation];let totalA=0,totalD=0,attack=0,defense=0,filled=0,sourceProfiles=0,csvStats=0,roleMismatch=0;
+ const x=lineupFor(team),positions=FORMS[x.formation];let totalA=0,totalD=0,attack=0,defense=0,filled=0,sourceProfiles=0,csvStats=0,roleMismatch=0,absent=0,doubtful=0;
  const weights={GK:[.1,1.7],DF:[.35,1.45],MF:[1,1],FW:[1.8,.25]};
  const scout=read("simulab-v3-scout")[pairKey(team)]?.players||[];
  const findProfile=name=>scout.find(p=>normalized(p.name)===normalized(name));
+ const statuses=read("simulab-v5-player-status")[pairKey(team)]||{};
  const officialRole=role=>{
   const s=String(role||"").toLowerCase();
   if(/goalkeeper|keeper|kaleci/.test(s))return "GK";
@@ -427,6 +429,9 @@ function lineupEffect(team){
   const diff=(p.rating-6.5)/3.5,condition=(p.fitness-100)/50;
   attack+=(diff*.125+condition*.07)*pA;
   defense+=(diff*.125+condition*.07)*pD;
+  const playerStatus=statuses[normalized(p.name)]||"fit";
+  if(playerStatus==="out"||playerStatus==="suspended"){absent++;attack-=.11*pA;defense-=.11*pD}
+  else if(playerStatus==="doubt"){doubtful++;attack-=.03*pA;defense-=.03*pD}
   const profile=findProfile(p.name);
   if(!profile)continue;
   sourceProfiles++;
@@ -443,7 +448,7 @@ function lineupEffect(team){
     attack+=impact*pA;csvStats++;
   }
  }
- return {attack:clamp(attack/totalA,-.14,.14),defense:clamp(defense/totalD,-.14,.14),filled,sourceProfiles,csvStats,roleMismatch};
+ return {attack:clamp(attack/totalA,-.14,.14),defense:clamp(defense/totalD,-.14,.14),filled,sourceProfiles,csvStats,roleMismatch,absent,doubtful};
 }
 function renderPsych(){
  const {home,away}=currentPair();
@@ -588,6 +593,8 @@ function modelRates(home,away){
  const warnings=[issue,
   (h.n<5||a.n<5)?"DÜŞÜK GÜVEN: "+home+" "+h.n+" maç, "+away+" "+a.n+" maç; sınırlı veri genel maç gol ortalamalarıyla dengelendi. Gerçek kadro veya oyuncu performansı yerine geçmez. ":"",
   hl.filled<11||al.filled<11?"Kadro bilgilerinin bir bölümü eksik / varsayımsal. ":"",
+  hl.absent+al.absent>0?"KULLANICI SENARYOSU: İlk 11 içinde maç dışı/cezalı işaretli "+(hl.absent+al.absent)+" oyuncu var; bu kesin sakatlık kaydı değildir. ":"",
+  hl.doubtful+al.doubtful>0?"Kullanıcının şüpheli işaretlediği "+(hl.doubtful+al.doubtful)+" oyuncuya düşük hazırlık etkisi uygulandı. ":"",
   hl.roleMismatch+al.roleMismatch>0?"Kaynak profil ile simülasyondaki rol arasında "+(hl.roleMismatch+al.roleMismatch)+" olası uyumsuzluk var; bu yalnızca genel mevki kontrolüdür. ":"",
   hl.csvStats+al.csvStats>0?"Kullanıcı scout istatistikleri kısmi bir ek sinyal olarak kullanıldı; doğrulama kullanıcıya aittir. ":"",
   hn.count||an.count?"Haber başlıkları doğrulanmış bilgi değildir. Adı kullanıcı ilk 11’iyle eşleşen oyuncu haberi ayrıca ağırlıklandırıldı ("+(hn.playerLinked+an.playerLinked)+" eşleşme). ":"",
@@ -648,8 +655,11 @@ function simulate(){
   $("ball").style.left=(12+Math.random()*75)+"%";$("ball").style.top=(12+Math.random()*75)+"%";
   draw();
   if(n<runCount)setTimeout(tick,speed===1?110:speed===10?75:70);
-  else if(typeof window!=="undefined"&&window.SIMULAB_REPLAY?.onComplete){
+  else{
+   window.SIMULAB_V5?.afterSimulation?.({trials,home,away,model,counts,runCount,league,chosen});
+   if(typeof window!=="undefined"&&window.SIMULAB_REPLAY?.onComplete){
    try{window.SIMULAB_REPLAY.onComplete({trials,home,away,model,chosen,runCount,league})}catch(e){console.error("Replay setup failed",e)}
+   }
   }
  }
  tick();
@@ -878,7 +888,7 @@ function connectEvents(){
  for(const b of document.querySelectorAll("#tabs [data-tab]"))b.addEventListener("click",()=>setTab(b.dataset.tab));
  $("fixture-filters").querySelectorAll("button").forEach(b=>b.addEventListener("click",()=>{fixtureFilter=b.dataset.fixture;document.querySelectorAll("#fixture-filters button").forEach(x=>x.classList.toggle("active",x===b));renderFixtures()}));
  $("fixture-search").addEventListener("input",renderFixtures);$("fixture-limit").addEventListener("change",renderFixtures);
- for(const id of ["team-home","team-away"])$(id).addEventListener("change",()=>{chosen=null;newsCache={};newsToken++;simulationReset();updateSelectedUI()});
+ for(const id of ["team-home","team-away"])$(id).addEventListener("change",()=>{chosen=null;newsCache={};newsToken++;simulationReset();updateSelectedUI();window.SIMULAB_V5?.onTeamsChanged?.()});
  $("simulate").addEventListener("click",simulate);
  $("open-lineups").addEventListener("click",()=>setTab("lineup"));
  $("speeds").querySelectorAll("button").forEach(b=>b.addEventListener("click",()=>{speed=Number(b.dataset.speed);$("speeds").querySelectorAll("button").forEach(x=>x.classList.toggle("active",x===b))}));
@@ -943,6 +953,14 @@ if(typeof window!=="undefined"){
    }
    const ok=persist(LS.lineups,lineups);renderLineups();return ok;
   },
+  getAllTeams:()=>LEAGUES.flatMap(l=>[...new Set([...(matches[l.id]||[]).flatMap(m=>[m.home,m.away]),...(fixtures[l.id]||[]).flatMap(m=>[m.home,m.away])])].filter(Boolean).map(name=>({league:l.id,leagueName:l.name,name}))),
+  getTeamMatches:(name,id)=>{const k=id||league;const rows=[...(matches[k]||[]).map(m=>({...m,isResult:true})),...(fixtures[k]||[]).map(m=>({...m,isResult:false}))];return rows.filter(m=>similarTeam(m.home,name)||similarTeam(m.away,name)).sort((a,b)=>a.date.localeCompare(b.date));},
+  getTeamForm:(name,id)=>{const rows=(matches[id||league]||[]).filter(m=>similarTeam(m.home,name)||similarTeam(m.away,name)&&Number.isInteger(m.hg));const last=rows.sort((a,b)=>b.date.localeCompare(a.date)).slice(0,10);return last.map(m=>({date:m.date,scored:similarTeam(m.home,name)?m.hg:m.ag,conceded:similarTeam(m.home,name)?m.ag:m.hg,opponent:similarTeam(m.home,name)?m.away:m.home}))},
+  selectFixture:(m,id)=>{if(id&&id!==league)setLeague(id);chooseFixture(m)},
+  selectLeague:(id)=>setLeague(id),
+  openTab:(name)=>setTab(name),
+  refreshLineups:()=>{renderLineups();renderPsych();renderForms()},
+  getModel:()=>{const {home,away}=currentPair();return modelRates(home,away)},
   simulate:()=>simulate(),
   notice:(message,warn)=>notify(message,warn),
   refresh:()=>{updateSelectedUI();syncBanner()}
