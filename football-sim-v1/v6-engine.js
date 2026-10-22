@@ -16,7 +16,14 @@
  "bayern munich":"bayern munich","inter":"internazionale","internazionale milano":"internazionale",
  "atleti":"atletico madrid","barca":"barcelona","juve":"juventus","r madrid":"real madrid"
  };
- const key=s=>ALIAS[norm(s)]||norm(s);
+ const keyCache=new Map();
+ const key=s=>{
+  const raw=String(s||""),cached=keyCache.get(raw);
+  if(cached!==undefined)return cached;
+  const n=norm(raw),value=ALIAS[n]||n;
+  if(keyCache.size>3500)keyCache.clear();
+  keyCache.set(raw,value);return value;
+ };
  const day=s=>/^\d{4}-\d{2}-\d{2}$/.test(String(s||""))&&!Number.isNaN(Date.parse(s))?s:null;
  const days=(a,b)=>Math.round((Date.parse(b+"T00:00:00Z")-Date.parse(a+"T00:00:00Z"))/86400000);
  const valid=m=>m&&day(m.date)&&key(m.home)&&key(m.away)&&key(m.home)!==key(m.away)&&Number.isInteger(m.hg)&&Number.isInteger(m.ag)&&m.hg>=0&&m.ag>=0&&m.hg<=20&&m.ag<=20;
