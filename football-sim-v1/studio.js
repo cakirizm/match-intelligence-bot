@@ -136,7 +136,7 @@ function renderFixtures(){
  const query=$("fixture-search").value.trim().toLocaleLowerCase("tr");
  if(query)subset=subset.filter(m=>(m.home+" "+m.away).toLocaleLowerCase("tr").includes(query));
  subset.sort((a,b)=>fixtureFilter==="results"?b.date.localeCompare(a.date):a.date.localeCompare(b.date));
- if(fixtureFilter==="all")subset.sort((a,b)=>b.date.localeCompare(a.date));
+ if(fixtureFilter==="all")subset.sort((a,b)=>Math.abs(days(dateToday(),a.date))-Math.abs(days(dateToday(),b.date)));
  const total=subset.length,limit=Number($("fixture-limit").value)||12;subset=subset.slice(0,limit);
  text($("fixture-footnote"),total+" maç bulundu · Tıkla → 1.000 simülasyon · Skorsuz geçmiş tarihler sonuç olarak gösterilmez.");
  if(!subset.length){
