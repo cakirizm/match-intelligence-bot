@@ -32,7 +32,7 @@ function setup(){
  });
  $("simulate").textContent="▶ 5.000 MAÇI SİMÜLE ET";
  document.addEventListener("click",e=>{
-  if(e.target.closest?.(".league")||e.target.closest?.(".fixture-item")){pause();setTimeout(()=>{if(replay&&API().getState().home!==replay.home)empty()},30)}
+  if(e.target.closest?.(".league")||e.target.closest?.(".fixture-item")){pause();setTimeout(()=>{if(replay&&(API().getState().home!==replay.home||API().getState().away!==replay.away||API().getState().league!==replay.league))empty()},30)}
  });
 }
 function empty(){
@@ -228,7 +228,7 @@ function prepare(result){
  const score=scoreKey.split("-").map(Number);
  const homes=teamPlayers(home,"home"),aways=teamPlayers(away,"away"),players=[...homes,...aways];
  const stats=scoreSummary(trials,homes,aways),events=buildNarrative(score,players,model);
- replay={home,away,score,modalProbability:count/runCount,players,events,model,runCount,minute:0,idx:0,homeScore:0,awayScore:0,recentEvent:null};
+ replay={home,away,league:result.league,score,modalProbability:count/runCount,players,events,model,runCount,minute:0,idx:0,homeScore:0,awayScore:0,recentEvent:null};
  $("r-home").textContent=home;$("r-away").textContent=away;
  pitchPlayers(players);
  renderPlayerSummary(stats,players,runCount);
@@ -242,6 +242,8 @@ function rerender(){
  const players=[...teamPlayers(home,"home"),...teamPlayers(away,"away")];
  replay.players=players;replay.events=buildNarrative(score,players,model);
  pitchPlayers(players);renderExplainer(model,runCount,players,score);rewind();
+ $("r-chip").textContent="İLK 11 DEĞİŞTİ · YENİDEN SİMÜLE ET";
+ $("r-explain").textContent="Kadro değiştirildi. Bu görselleştirme önceki simülasyonun skor modelini kullanır; güncel kadro etkisini ve yeni golcü olasılıklarını görmek için 5.000 Maçı Simüle Et düğmesini tekrar çalıştır.";
 }
 window.SIMULAB_REPLAY={onComplete:prepare,rerender};
 setup();
