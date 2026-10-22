@@ -1,66 +1,67 @@
-# SIMULAB V4.1 — Ücretsiz Futbol Fikstürü ve Simülasyon
+# SIMULAB V5 — Futbol Takım Profilleri ve Birleşik Simülasyon
 
-Beş büyük Avrupa ligi **Premier League, La Liga, Bundesliga, Serie A, Ligue 1** ve **UEFA Şampiyonlar Ligi** için tek tıkla fikstür, sonuçlar, kadro/scout girişi ve 1.000–10.000 Monte Carlo simülasyonu.
+**Tamamen ücretsiz veri kaynaklarına dayanabilen** futbol analiz sitesi. Beş büyük Avrupa ligi (**Premier League, La Liga, Bundesliga, Serie A, Ligue 1**) ve **UEFA Şampiyonlar Ligi**. Türkiye Süper Ligi ve UEFA Avrupa Ligi yok.
 
-Türkiye Süper Ligi ve UEFA Avrupa Ligi bu sürüme dahil değildir.
+## Kullanıcı akışı
 
-## Kurulum maliyeti
+1. Ana sayfadaki altı turnuvalı fikstür merkezinden bir karşılaşma seç.
+2. **Takım Profilleri** sekmesinde kulübü aç: son formu, son 10 maçı, yaklaşan fikstürü, kaynaklı oyuncu listesini ve temel oyuncu profilini gör.
+3. Sistem ücretsiz **TheSportsDB** takım bilgileri ile **Wikipedia açık lisanslı / topluluk kaynaklı kadro** listesini birleştirmeyi dener. Başarılıysa **muhtemel ilk 11 taslağı** önerebilir.
+4. **Resmî ilk 11 doğrulanmış değildir.** Ücretsiz maç kadrosu sorgusu ayrı çalışır. TheSportsDB bedelsiz yanıtta en fazla 5 kayıt gösterebilir; eksik veri '11' gibi kullanılmaz.
+5. İstersen seçilen takımın ilk 11'ini Scout ekranından manuel düzenle veya kadro fotoğrafı ile OCR'dan geçir. Bu bilgiler kaydedilmeden önce gözden geçirilmelidir.
+6. Takım profilindeki bir oyuncuyu **oynamayacak / şüpheli / cezalı** olarak işaretlemek kullanıcının **senaryo varsayımıdır**; sağlık, ceza veya resmî kadro doğrulaması değildir. Modeli buna göre tekrar çalıştır.
+7. **Maç Merkezi** bölümündeki tek **1.000 / 5.000 / 10.000 koşuluk simülasyon**, son sonuçlar, takımın iç/dış saha gol gücü, kaynakta eşleşen oyuncu rolü, manuel ilk 11/oyuncu performans girdileri, kontrollü moral/haber etkileri ve kayıtlı maçların dinlenme aralığını birleştirir. Olası skorlar, 1X2, karşılıklı gol, alt/üst, golcü senaryoları ve FM tarzı temsili animasyon burada.
+8. **Birleşik açıklama raporu**, model güveni, mevcut XI veri kapsamı, takvim etkisi ve senaryo düzeltmelerini gösterir.
 
-- Ücretli API, kişisel API anahtarı ve hesap açma **gerekmez**.
-- GitHub ve Vercel'in mevcut ücretsiz katmanlarında kullanım kotaları dahilinde çalışır.
-- Ücretsiz veri kaynaklarının kapsamı ve güncelliği garanti değildir.
+## Kaynak / veri kapsamı
 
-## Güncel veri akışı
+| Veri | Kaynak | Ücretsiz | Güven sınırlaması |
+|---|---|---|---|
+| Beş büyük lig fikstür ve skor | OpenFootball JSON (CC0), OpenLigaDB (ODbL), TheSportsDB ücretsiz API | Evet | Kaynakların güncellenme sıklığı ve kapsamı farklı |
+| Şampiyonlar Ligi tarihi sonuçları | OpenFootball Champions League CC0, `ucl-history.json` | Evet | 2023–24, 2024–25, 2025–26 toplam 503 maç |
+| Mevcut takım profili | TheSportsDB ücretsiz arama | Evet | Sağlayıcıya göre eksik alanlar olabilir |
+| Kadro oyuncu listesi | Wikipedia/MediaWiki açık lisanslı topluluk kadrosu; TheSportsDB temel oyuncu örneği | Evet | **Resmî kayıt, sakatlık, gerçek maç 11'i veya bütün oyuncuların eksiksiz istatistikleri değildir** |
+| Bireysel sezon istatistiği | TheSportsDB `lookupplayerstats` | Evet, sınırlı | Veri yalnızca sağlayıcı döndürürse |
+| Maç kadrosu kontrolü | TheSportsDB `lookuplineup` | Evet, sınırlı | Bedelsiz cevap eksik oyuncu içerebilir; iki takımın da 11'er oyuncusu yoksa doğrulanmış 11 sayılmaz |
+| Maç haber başlıkları | Google News RSS | Evet | Yalnızca başlıklar ve bağlantılar okunur; doğrulama için kaynağa gidilmesi gerekir |
+| Oyuncu dakika/mevki geçmişi | Kullanıcı scout CSV'si | Evet, manuel | Kullanıcının girdiği kayıtlara dayanır |
+| Fotoğraftan kadro | Tarayıcıda Tesseract.js OCR | Evet | OCR hataları manuel gözden geçirilmelidir |
 
-`/api/fixtures?league=eng|esp|ger|ita|fra|ucl`
+### Güncelleme ve değişiklik günlüğü
 
-- İngiltere, İspanya, İtalya, Fransa: [OpenFootball 2026/27](https://github.com/openfootball/football.json) **CC0** tam sezona dayalı program ve kayıtlı sonuçlar.
-- Almanya ve Şampiyonlar Ligi: [OpenLigaDB](https://www.openligadb.de/) **ODbL**, 2026/27 sezonu. Açık API, giriş/kişisel anahtar gerektirmez. ODbL attribution ve veri tabanı paylaşımı koşullarına uyulmalıdır.
-- Altı turnuva: [TheSportsDB V1](https://www.thesportsdb.com/docs_api_guide.php) herkese açık **123 ücretsiz API anahtarı** üzerinden sınırlı yakın maç/sonuç güncellemesi.
-- Tarihsel temel arşiv: OpenFootball CC0. Şampiyonlar Ligi'nin 2023–24, 2024–25 ve 2025–26 sezonları ayrıca `ucl-history.json` içinde (503 skor kaydı) bulunur.
+- Takım profili tarayıcıda 8 saat saklanabilir, zorla güncelleme seçeneği vardır.
+- Eski ve yeni kadro listesindeki farklı oyuncu adları kaydedilir. **Bu farklar transfer veya sağlık durumu kanıtı değildir.**
+- Kaynak geçici olarak eksik kadro verirse önceki detaylı kaynak kaydı korunur ve eksiklik belirtilir.
+- Maç fikstürü kullanıcı siteyi açtığında yaklaşık 6 saatlik aralıkla kontrol edilir; **sunucu 24/7 arka planda sürekli tarama yapmaz**.
+- Kullanıcı manuel ilk 11'ini eklemişse otomatik öneri **üzerine yazmaz**.
+- Gerçek maçta kimlerin başlayacağı açık kaynakta güvenilir biçimde bulunamazsa "tahmini / onaysız" etiketi kalır.
 
-### Kullanım
+## Modelin bilerek yapmadıkları
 
-1. [https://simulab-football.vercel.app](https://simulab-football.vercel.app) adresini aç.
-2. Otomatik güncelleme en fazla **6 saatte bir**, tarayıcın siteyi açtığında tetiklenir (arka planda sürekli çalışan tarama değildir).
-3. Üstte **Fikstürü Ücretsiz Güncelle** veya **Verileri Güncelle → 6 turnuvayı ücretsiz güncelle** seç.
-4. **Bugün / 7 Gün / 30 Gün / Yaklaşan / Sonuçlar / Tümü** filtreleriyle lig ve maç seç.
-5. Maça tıkladığında simülasyon başlar. İstersen `1.000`, `5.000`, `10.000` Monte Carlo koşusu seç.
-6. **Scout & İlk 11** bölümünden oyuncu adlarını manuel gir, kendi scout CSV dosyanı yükle veya kadro görselini cihazında OCR ile okut. OCR çıktısını onaylamadan oyuncu kaydedilmez.
-7. **Haber & Psikoloji** bölümündeki RSS haber başlıkları öneri niteliğindedir, doğrulanmış bireysel psikolojik değerlendirme değildir.
+- Oyuncunun psikolojisini gerçek biyolojik veya klinik veriymiş gibi ölçmez.
+- Eksik oyuncu, sakatlık, mevki veya maç gol/şut/konum istatistiklerini gerçekmiş gibi uydurmaz.
+- 1-1, 1-0, 0-0 gibi geçerli futbol skorlarını yapay olarak dışlamaz.
+- Ücretsiz kaynakta bulunmayan tüm oyuncuların sezon boyu mevki/dakika, xG ve top konumu olaylarını otomatik getirmiş gibi davranmaz.
+- Maç canlandırmasındaki toplu koşular, şutlar, paslar ve golcüler model tarafından oluşturulan **temsili olaylardır**.
 
-**Önemli:** Bir veri kaynağı sadece kısmi fikstür döndürürse tarayıcıdaki eski gelecekteki maçları silmez. Tam sezon akışı yenilenirse ertelenmiş/silinen planlı maç kayıtları yeniden belirlenir. Eksik veri varsa arayüzde kaynak, zaman ve uyarı gösterilir.
+Model **kalibre edilmiş profesyonel bahis tahmin sistemi değildir**. Zaman ve kadro örneklem belirsizliği vardır. Monte Carlo sonuçları örneklem rastgeleliği taşır.
 
-## Gerçek veri ile simülasyon ayrımı
+## GitHub/Vercel
 
-- Gerçek veriler: kaynaklı maç sonuçları, tarih/fikstür, kaynak tarafından sağlanıyorsa takım/kadro profilleri.
-- Manuel: oyuncu puanları, fiziksel hazır oluş, psikolojik senaryo, kullanıcı scout CSV ve haber onayları.
-- Simüle: olay konumları, dakika akışı, golcü ve asistçi adayları, şut/pas sahnesi. **Bunlar gerçekleşmiş maç olayları değildir**.
-- Model: tarihsel gol ortalamaları, ev/deplasman, sınırlı oyuncu ve psikoloji senaryoları, Poisson/Monte Carlo.
-- Tarihsel kayıt yetersizse düşük güven uyarısı ve açıkça belirtilen genel maç gol öncülleri kullanılır.
-- Simülasyon yüzdeleri kalibre edilmiş profesyonel tahmin veya bahis tavsiyesi değildir.
+Proje deposu `cakirizm/match-intelligence-bot`, Vercel kök dizini `football-sim-v1`.
 
-## Kaynak hakları
+Önemli dosyalar:
 
-OpenFootball CC0 ve OpenLigaDB ODbL uyumlulukları korunmalı. TheSportsDB, kendi ücretsiz API koşullarına tabidir. Başka servislerden izin olmadan tüm sezon verisi kopyalanıp tekrar yayımlanmaz. Takım adları ve ticari markalar ilgili sahiplerine aittir.
+- `index.html`, `studio.css`, `studio-v3.css`: Kullanıcı arayüzü
+- `studio.js`: Ana fikstür/takım geçmişi, oyuncu senaryoları ve Monte Carlo motoru
+- `team-v5.js`: Altı turnuva takım dizini, kaynaklı oyuncu verisi, XI taslağı, değişiklikler, maç raporu
+- `scout-v3.js`: Manuel oyuncu CSV, ilk 11 fotoğraf OCR
+- `replay-v3.js`: FM tarzı temsilî animasyon
+- `api/fixtures.js`, `api/team.js`, `api/player.js`, `api/lineup.js`, `api/news.js`: Ücretsiz kaynak API proxy'leri
+- `ucl-history.json`: Üç sezonluk açık Şampiyonlar Ligi arşivi
 
-## Yapı
+**Wikipedia attribution:** Wikipedia ve katkıda bulunanların yazıları uygun CC BY-SA koşullarına tabidir, takım profilinde doğrudan kaynak sayfasına bağlantı verilir. ODbL veri uyumluluğu ve TheSportsDB API kullanım şartları saklıdır.
 
-- `index.html`, `studio.css`, `studio-v3.css` — mobil uyumlu kullanıcı arayüzü
-- `studio.js` — veri saklama/yenileme, lig filtreleri ve maç modeli
-- `api/fixtures.js` — ücretsiz ve anahtarsız sonuç/fikstür birleştirme
-- `api/news.js` — Google News RSS başlıkları; tam haber incelemesi değildir
-- `api/squad.js` — isteğe bağlı **kendi** football-data.org ücretsiz API anahtarı gerektiren temel kadro kaynağı; ana akış için gerekli değildir
-- `scout-v3.js` — fotoğraf OCR/manuel CSV ve ilk 11 kontrolü
-- `replay-v3.js` — temsili oyunculu maç anlatımı ve 1.000–10.000 koşudan golcü senaryoları
-- `ucl-history.json` — üç sezonluk açık Şampiyonlar Ligi geçmişi
+### Dağıtım
 
-## Sınırlamalar
-
-- 2026/27 sezonu programları, ücretsiz topluluk verisi ve sağlayıcıların güncelleme sürelerine tabidir; doğruluk garantisi yoktur.
-- TheSportsDB ücretsiz sürümde tek yakın maç / sınırlı sezon kaydı gönderebilir.
-- Oyuncuların tam geçmiş dakika-mevki haritaları ve gerçek maçtaki pas/şut koordinatları otomatik olarak gelmez.
-- Veriler ve kullanıcı ayarları tarayıcının `localStorage` alanında tutulur; cihazlar arası senkronizasyon yoktur.
-- Vercel uygulamasının dağıtımı GitHub `main` dalındaki değişiklikler üzerinden otomatik tetiklenir.
-
-SIMULAB — eğitim ve analiz amaçlı, ücretsiz altyapı.
+GitHub main dalına commit sonrası Vercel Git entegrasyonu etkinse otomatik dağıtım beklenir. Vercel bağlantısının yetkisi yoksa yeni kod GitHub'da olsa bile canlı site güncellenmeyebilir. **GitHub commit kaydı, tek başına canlı dağıtımın doğrulandığı anlamına gelmez.**
