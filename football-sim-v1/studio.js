@@ -601,6 +601,66 @@ async function openFootballFile(l,season){
  return null;
 }
 function refreshCurrent(){renderLeagues();const h=$("team-home").value,a=$("team-away").value;makeOpts($("team-home"),teams(),h);makeOpts($("team-away"),teams(),a);syncBanner();renderFixtures();updateSelectedUI();renderGlobalFixtures()}
+/* Automatically refresh keyless public fixture source; retain CC0 and user archives. */
+async function syncFreeFixtures(ids=LEAGUES.map(l=>l.id),quiet=false){
+ if(syncing){if(!quiet)notify("Başka bir veri güncellemesi devam ediyor.");return {busy:true}}
+ syncing=true;
+ const buttons=["sync-current","sync-all","sync-live"].map(id=>$(id)).filter(Boolean);
+ for(const b of buttons)b.disabled=true;
+ const succeeded=[],failed=[];
+ const status=$("sync-message");
+ const report=message=>{if(status)text(status,message);if(!quiet)notify(message)};
+ try{
+  report(ids.length+" turnuva için ücretsiz fikstür ve son skorlar kontrol ediliyor...");
+  const responses=await Promise.all(ids.map(async id=>{
+   const display=LEAGUES.find(l=>l.id===id)?.name||id;
+   try{
+    const data=await fetchJson("/api/fixtures?league="+encodeURIComponent(id),18000);
+    if(!Array.isArray(data.complete)||!Array.isArray(data.upcoming))throw Error("Maç akışının formatı hatalı.");
+    if(!data.complete.length&&!data.upcoming.length)throw Error("Kaynak bu dönem için henüz maç döndürmedi.");
+    const alias=name=>canonical(name,id);
+    const completed=data.complete.map(m=>({...m,home:alias(m.home),away:alias(m.away),source:"ESPN web feed"}));
+    const scheduled=data.upcoming.map(m=>({...m,home:alias(m.home),away:alias(m.away),source:"ESPN web feed"}));
+    const existing=Array.isArray(matches[id])?matches[id]:[];
+    matches[id]=dedupeEntries([...existing,...completed]);
+    const oldFixtures=Array.isArray(fixtures[id])?fixtures[id]:[];
+    const withinRange=x=>x.date>=data.coverageFrom&&x.date<=data.coverageTo;
+    // When the public schedule is available, replace stale fixtures in its coverage window.
+    const retained=oldFixtures.filter(x=>!withinRange(x));
+    fixtures[id]=dedupeFixture([...retained,...scheduled]).filter(x=>x.date>=dateToday());
+    const previous=metadata[id]||{};
+    const latest=matches[id].map(m=>m.date).sort().at(-1)||"";
+    metadata[id]={...previous,source:"OpenFootball CC0 + ESPN public web feed (unofficial)",latestResult:latest,
+     count:matches[id].length,fixtures:fixtures[id].length,updatedAt:new Date().toISOString(),fixtureSyncAt:new Date().toISOString(),
+     fixtureProvider:"ESPN public web scoreboard (unofficial)",fixtureCoverageFrom:data.coverageFrom,fixtureCoverageTo:data.coverageTo,
+     apiKeyRequired:false};
+    succeeded.push({id,display,newResults:completed.length,upcoming:scheduled.length});
+   }catch(e){
+    failed.push({id,display,error:String(e.message||e).slice(0,110)});
+   }
+  }));
+  if(succeeded.length){
+   const a=persist(LS.matches,matches),b=persist(LS.fixtures,fixtures),c=persist(LS.meta,metadata);
+   refreshCurrent();
+   if(!a||!b||!c)failed.push({display:"Tarayıcı hafızası",error:"Depolama sınırlaması"});
+  }
+  const successNames=succeeded.map(x=>x.display+": "+x.upcoming+" yaklaşan / "+x.newResults+" skor").join(" · ");
+  const errorNames=failed.map(x=>x.display+": "+x.error).join(" | ");
+  report("Ücretsiz kontrol: "+succeeded.length+"/"+ids.length+" turnuva güncellendi. "+successNames+(failed.length?" • Erişilemeyen: "+errorNames+" • Arşiv korundu.":""));
+  return {succeeded,failed};
+ }finally{
+  syncing=false;for(const b of buttons)b.disabled=false;
+ }
+}
+async function syncSmartAll(){
+ if(syncing)return;
+ const archive=await syncChampionsArchive();
+ // Always try keyless public fixtures first; if unavailable preserve OpenFootball cache.
+ const result=await syncFreeFixtures(LEAGUES.map(l=>l.id));
+ if(archive.ok&&result?.failed?.length)text($("sync-message"),$("sync-message").textContent+" | Şampiyonlar Ligi açık arşivi: "+archive.count+" maç.");
+ return result;
+}
+
 async function syncChampionsArchive(){
  try{
   const response=await fetch("./ucl-history.json",{cache:"no-store"});
@@ -734,15 +794,27 @@ function connectEvents(){
  $("open-sync").addEventListener("click",show);$("close-sync").addEventListener("click",hide);
  $("sync-modal").addEventListener("click",e=>{if(e.target===$("sync-modal"))hide()});
  document.addEventListener("keydown",e=>{if(e.key==="Escape")hide()});
- $("sync-current").addEventListener("click",()=>syncOpenFootball([league]));
- $("sync-all").addEventListener("click",()=>syncOpenFootball(LEAGUES.map(l=>l.id)));
- $("sync-live").addEventListener("click",syncApi);
+ $("sync-current").addEventListener("click",()=>league==="ucl"?syncChampionsArchive().then(()=>syncFreeFixtures(["ucl"])):syncFreeFixtures([league]));
+ $("sync-all").addEventListener("click",syncSmartAll);
+ $("sync-live").addEventListener("click",()=>syncFreeFixtures(LEAGUES.map(l=>l.id)));
  $("import-csv").addEventListener("click",importCsv);
  $("api-status-check").addEventListener("click",checkApi);
 }
+async function startAutoSync(){
+ const key="simulab-v3-fixtures-last-attempt";
+ let last=0;try{last=Number(localStorage.getItem(key)||0)}catch{}
+ if(Date.now()-last<6*3600*1000)return;
+ try{localStorage.setItem(key,String(Date.now()))}catch{}
+ if(LEAGUES.filter(l=>l.id!=="ucl").every(l=>!matches[l.id]?.length)){
+  notify("İlk açılış: ücretsiz maç arşivleri ve fikstür indiriliyor.");
+  await syncOpenFootball(LEAGUES.filter(l=>l.id!=="ucl").map(l=>l.id));
+ }
+ if(!matches.ucl?.length)await syncChampionsArchive();
+ await syncFreeFixtures(LEAGUES.map(l=>l.id),true);
+}
 function init(){
- connectEvents();setLeague("eng");setTab("match");simulationReset();
- if(LEAGUES.filter(l=>l.id!=="ucl").every(l=>!matches[l.id]?.length)){notify("İlk açılış: beş ligin ücretsiz maç arşivi indiriliyor.");syncOpenFootball(LEAGUES.filter(l=>l.id!=="ucl").map(l=>l.id))}
+ connectEvents();setLeague("eng");setTab("match");simulationReset();renderGlobalFixtures();
+ Promise.resolve().then(startAutoSync).catch(error=>notify("Otomatik fikstür güncellemesi başarısız: "+String(error.message||error),true));
 }
 
 if(typeof window!=="undefined"){
