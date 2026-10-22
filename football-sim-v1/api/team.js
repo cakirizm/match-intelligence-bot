@@ -205,14 +205,17 @@ export default async function handler(req,res){
  if(!team||!/[\p{L}]{2,}/u.test(team)||!Object.prototype.hasOwnProperty.call(CODES,league))
   return res.status(400).json({error:"Takım ve altı turnuvadan biri zorunlu"});
  let profile=null,players=[],wiki=null,extras=[],errors=[];
- const metadata=await Promise.allSettled([sportsTeam(team)]);
- if(metadata[0].status==="fulfilled")profile=metadata[0].value;
- else errors.push("TheSportsDB takım: "+String(metadata[0].reason?.message||"erişilemedi").slice(0,70));
- const parallel=await Promise.allSettled([wikiPlayers(team,profile),profile?sportsPlayers(profile.teamId):Promise.resolve([])]);
- if(parallel[0].status==="fulfilled")wiki=parallel[0].value;
- else errors.push("Wikipedia kadro: "+String(parallel[0].reason?.message||"erişilemedi").slice(0,110));
- if(parallel[1].status==="fulfilled")extras=parallel[1].value;
- else errors.push("TheSportsDB oyuncu: "+String(parallel[1].reason?.message||"erişilemedi").slice(0,90));
+ // Start Wikipedia and provider lookups together: no unnecessary serial latency.
+ const sportPromise=sportsTeam(team).then(async p=>{
+  let roster=[];
+  try{roster=await sportsPlayers(p.teamId)}catch(e){errors.push("TheSportsDB oyuncu: "+String(e.message||e).slice(0,100))}
+  return {profile:p,roster};
+ });
+ const [sports,wikipedia]=await Promise.allSettled([sportPromise,wikiPlayers(team,null)]);
+ if(sports.status==="fulfilled"){profile=sports.value.profile;extras=sports.value.roster}
+ else errors.push("TheSportsDB takım: "+String(sports.reason?.message||"erişilemedi").slice(0,90));
+ if(wikipedia.status==="fulfilled")wiki=wikipedia.value;
+ else errors.push("Wikipedia kadro: "+String(wikipedia.reason?.message||"erişilemedi").slice(0,110));
  players=merge(wiki?.players||[],extras);
  const origin=wiki?"Wikipedia (community-edited), supplemented by TheSportsDB":extras.length?"TheSportsDB limited free sample":"No reliable roster";
  const now=new Date().toISOString();
